@@ -1,3 +1,3 @@
 # startGoals
-eduTech app
-thanush
+
+npm start
