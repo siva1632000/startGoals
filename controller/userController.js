@@ -1,5 +1,5 @@
 import sequelize from "../config/db.js";
-import User from "../model/User.js";
+import User from "../model/user.js";
 import { validateEmail } from "../utils/commonUtils.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/jwtToken.js";
