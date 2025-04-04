@@ -2,10 +2,10 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import sequelize from "./config/db.js";
-//import autoCreate from "./config/tableCreationConfig.js";
 import router from "./routes/router.js";
 import { configurePassport } from "./utils/passport.js";
 import passport from "passport";
+import { autoSyncDatabase } from "./config/autoSyncDb.js"; // 👈 import sync function
 import session from "express-session"; // Import express-session
 
 // to use  .env file atributes
@@ -38,9 +38,15 @@ configurePassport(passport);
 app.use(passport.initialize());
 app.use(passport.session());
 
-app.use(router);
+app.use("/api", router);
 
-// PORT connection from .env file
-app.listen(process.env.SERVER_PORT, () => {
-  console.log("Server running on PORT " + process.env.SERVER_PORT);
-});
+// 🔄 Auto Sync DB then start server
+autoSyncDatabase()
+  .then(() => {
+    app.listen(process.env.SERVER_PORT, () => {
+      console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);
+    });
+  })
+  .catch((err) => {
+    console.error("💥 Failed to start server due to DB sync error");
+  });

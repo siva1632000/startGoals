@@ -1,45 +1,59 @@
 import sequelize from "../config/db.js";
 import User from "../model/user.js";
-import { validateEmail } from "../utils/commonUtils.js";
 import bcrypt from "bcryptjs";
 import { generateToken } from "../utils/jwtToken.js";
+import { validateEmail, validateMobile } from "../utils/commonUtils.js"; // Assuming you have these utilities
 
 export const userRegistration = async (req, res) => {
   try {
     const user = req.body;
     console.log(user);
-    if (!user || !user.email || !user.password) {
+
+    const { username, email, mobile, password } = user;
+
+    if (!password || (!email && !mobile)) {
       return res.status(200).json({
-        message: "email or password missing",
+        message: "Email or mobile number is required along with password",
         status: false,
       });
     }
 
-    if (!validateEmail(user.email)) {
+    // Validate email if provided
+    if (email && !validateEmail(email)) {
       return res.status(200).json({
-        message: "invalid email",
+        message: "Invalid email format",
         status: false,
       });
     }
 
-    const hashedPassword = await bcrypt.hash(user.password, 10);
+    // Validate mobile if provided
+    if (mobile && !validateMobile(mobile)) {
+      return res.status(200).json({
+        message: "Invalid mobile number format",
+        status: false,
+      });
+    }
+
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     const userData = {
-      name: user.name,
-      email: user.email,
+      username,
+      email: email || null,
+      mobile: mobile || null,
       password: hashedPassword,
     };
 
     const savedUser = await User.create(userData);
 
-    const { name, email, id } = savedUser;
+    const { id } = savedUser;
     res.status(200).json({
-      message: "user registered successfully",
+      message: "User registered successfully",
       status: true,
       data: {
         id,
-        name,
+        username,
         email,
+        mobile,
       },
     });
   } catch (error) {
@@ -49,23 +63,49 @@ export const userRegistration = async (req, res) => {
 
 export const userLogin = async (req, res) => {
   try {
-    const { email, password } = req.body;
+    const { identifier, password } = req.body;
 
-    const user = await User.findOne({ where: { email } });
-    if (!user || !(await bcrypt.compare(password, user.password))) {
-      return res.status(401).json({ message: "Invalid email or password." });
+    if (!identifier || !password) {
+      return res.status(400).json({
+        message: "Email or mobile and password are required.",
+        status: false,
+      });
     }
+
+    let user;
+
+    if (validateEmail(identifier)) {
+      user = await User.findOne({ where: { email: identifier } });
+    } else if (validateMobile(identifier)) {
+      user = await User.findOne({ where: { mobile: identifier } });
+    } else {
+      return res.status(400).json({
+        message: "Invalid email or mobile number format.",
+        status: false,
+      });
+    }
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({
+        message: "Invalid credentials.",
+        status: false,
+      });
+    }
+
     const token = generateToken(user);
+
     res.status(200).json({
       message: "Login successful.",
       status: true,
       data: {
         userId: user.id,
+        name: user.name,
+        email: user.email,
+        mobile: user.mobile,
         token: token,
       },
     });
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ message: error.message, status: false });
   }
 };
 
