@@ -1,8 +1,14 @@
-const generateOtp = require('../utils/generateOtp');
-const { createOtpEntry, verifyOtp, getLastSentTime } = require('../model/otpModel');
-const { sendEmailOtp, sendSmsOtp } = require('../utils/sendOtp');
+import generateOtp from '../utils/generateOtp.js';
+import {
+  createOtpEntry,
+  verifyOtp,
+  getLastSentTime,
+  getOtpHistory
+} from '../model/otpModel.js';
 
-async function sendOtp(req, res) {
+import { sendEmailOtp, sendSmsOtp } from '../utils/sendOtp.js';
+
+export async function sendOtp(req, res) {
   const { identifier, method } = req.body;
 
   const lastSent = await getLastSentTime(identifier);
@@ -20,6 +26,7 @@ async function sendOtp(req, res) {
   try {
     if (method === 'email') await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
+
     res.json({ message: `OTP sent via ${method}` });
   } catch (err) {
     console.error(err);
@@ -27,14 +34,15 @@ async function sendOtp(req, res) {
   }
 }
 
-async function validateOtp(req, res) {
+export async function validateOtp(req, res) {
   const { identifier, otp } = req.body;
   const isValid = await verifyOtp(identifier, otp);
   if (!isValid) return res.status(400).json({ error: 'Invalid or expired OTP' });
+
   res.json({ message: 'OTP verified successfully' });
 }
 
-async function resendOtp(req, res) {
+export async function resendOtp(req, res) {
   const { identifier, method } = req.body;
 
   const lastSent = await getLastSentTime(identifier);
@@ -52,6 +60,7 @@ async function resendOtp(req, res) {
   try {
     if (method === 'email') await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
+
     res.json({ message: `OTP resent via ${method}` });
   } catch (err) {
     console.error(err);
@@ -59,7 +68,13 @@ async function resendOtp(req, res) {
   }
 }
 
+export async function fetchOtpHistory(req, res) {
+  const { identifier } = req.query;
 
-  
+  if (!identifier) {
+    return res.status(400).json({ error: 'Identifier is required' });
+  }
 
-module.exports = { sendOtp, validateOtp , resendOtp };
+  const history = await getOtpHistory(identifier);
+  res.json({ history });
+}

@@ -1,31 +1,62 @@
-const db = require('../db');
-const bcrypt = require('bcrypt');
+import db from '../db.js';
+import bcrypt from 'bcrypt';
 
-async function createOtpEntry(identifier, otp) {
+export async function createOtpEntry(identifier, otp) {
   const hashedOtp = await bcrypt.hash(otp, 10);
+
+  // Expire previous OTPs
   await db.query(`
-    INSERT INTO otps (identifier, otp, expires_at, last_sent_at)
-    VALUES ($1, $2, NOW() + INTERVAL '5 minutes', NOW())
-    ON CONFLICT (identifier)
-    DO UPDATE SET otp = $2, expires_at = NOW() + INTERVAL '5 minutes', last_sent_at = NOW()
+    UPDATE otps
+    SET status = 'expired'
+    WHERE identifier = $1 AND status = 'active'
+  `, [identifier]);
+
+  // Insert new OTP
+  await db.query(`
+    INSERT INTO otps (identifier, otp, expires_at, last_sent_at, status)
+    VALUES ($1, $2, NOW() + INTERVAL '5 minutes', NOW(), 'active')
   `, [identifier, hashedOtp]);
 }
 
-async function verifyOtp(identifier, inputOtp) {
+export async function verifyOtp(identifier, inputOtp) {
   const res = await db.query(`
-    SELECT otp FROM otps WHERE identifier = $1 AND expires_at > NOW()
+    SELECT id, otp
+    FROM otps
+    WHERE identifier = $1 AND status = 'active' AND expires_at > NOW()
+    ORDER BY last_sent_at DESC
+    LIMIT 1
   `, [identifier]);
+
   if (res.rows.length === 0) return false;
-  return await bcrypt.compare(inputOtp, res.rows[0].otp);
+
+  const match = await bcrypt.compare(inputOtp, res.rows[0].otp);
+  if (match) {
+    await db.query(`UPDATE otps SET status = 'expired' WHERE id = $1`, [res.rows[0].id]);
+    return true;
+  }
+
+  return false;
 }
 
-async function getLastSentTime(identifier) {
-  const res = await db.query(`SELECT last_sent_at FROM otps WHERE identifier = $1`, [identifier]);
+export async function getLastSentTime(identifier) {
+  const res = await db.query(`
+    SELECT last_sent_at
+    FROM otps
+    WHERE identifier = $1 AND status = 'active'
+    ORDER BY last_sent_at DESC
+    LIMIT 1
+  `, [identifier]);
+
   return res.rows.length ? res.rows[0].last_sent_at : null;
 }
 
-module.exports = {
-  createOtpEntry,
-  verifyOtp,
-  getLastSentTime
-};
+export async function getOtpHistory(identifier) {
+  const res = await db.query(`
+    SELECT id, last_sent_at, expires_at, status
+    FROM otps
+    WHERE identifier = $1
+    ORDER BY last_sent_at DESC
+  `, [identifier]);
+
+  return res.rows;
+}

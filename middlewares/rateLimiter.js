@@ -1,4 +1,4 @@
-const rateLimit = require('express-rate-limit');
+import rateLimit from 'express-rate-limit';
 
 const otpRateLimiter = rateLimit({
   windowMs: 60 * 60 * 1000,
@@ -7,4 +7,4 @@ const otpRateLimiter = rateLimit({
   keyGenerator: (req) => req.body.identifier || req.ip,
 });
 
-module.exports = otpRateLimiter;
+export default otpRateLimiter;

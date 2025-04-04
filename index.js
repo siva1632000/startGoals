@@ -1,7 +1,9 @@
-const express = require('express');
-const bodyParser = require('body-parser');
-const routes = require('../startGoals/routes/routes');
-require('dotenv').config();
+import express from 'express';
+import bodyParser from 'body-parser';
+import routes from './routes/routes.js';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const app = express();
 app.use(bodyParser.json());
