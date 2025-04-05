@@ -1,178 +1,141 @@
-// import db from '../db.js';
-// import bcrypt from 'bcrypt';
-
-// // =======================
-// // OTP CRUD Functions
-// // =======================
-
-// export async function createOtpEntry(identifier, otp) {
-//   const hashedOtp = await bcrypt.hash(otp, 10);
-
-//   // Expire previous OTPs
-//   await db.query(`
-//     UPDATE otps
-//     SET status = 'expired'
-//     WHERE identifier = $1 AND status = 'active'
-//   `, [identifier]);
-
-//   // Insert new OTP
-//   await db.query(`
-//     INSERT INTO otps (identifier, otp, expires_at, last_sent_at, status)
-//     VALUES ($1, $2, NOW() + INTERVAL '5 minutes', NOW(), 'active')
-//   `, [identifier, hashedOtp]);
-// }
-
-// export async function verifyOtp(identifier, inputOtp) {
-//   const res = await db.query(`
-//     SELECT id, otp
-//     FROM otps
-//     WHERE identifier = $1 AND status = 'active' AND expires_at > NOW()
-//     ORDER BY last_sent_at DESC
-//     LIMIT 1
-//   `, [identifier]);
-
-//   if (res.rows.length === 0) return false;
-
-//   const match = await bcrypt.compare(inputOtp, res.rows[0].otp);
-//   if (match) {
-//     await db.query(`UPDATE otps SET status = 'expired' WHERE id = $1`, [res.rows[0].id]);
-//     return true;
-//   }
-
-//   return false;
-// }
-
-// export async function getLastSentTime(identifier) {
-//   const res = await db.query(`
-//     SELECT last_sent_at
-//     FROM otps
-//     WHERE identifier = $1 AND status = 'active'
-//     ORDER BY last_sent_at DESC
-//     LIMIT 1
-//   `, [identifier]);
-
-//   return res.rows.length ? res.rows[0].last_sent_at : null;
-// }
-
-// export async function getOtpHistory(identifier) {
-//   const res = await db.query(`
-//     SELECT id, last_sent_at, expires_at, status
-//     FROM otps
-//     WHERE identifier = $1
-//     ORDER BY last_sent_at DESC
-//   `, [identifier]);
-
-//   return res.rows;
-// }
-
-// // =======================
-// // Auto Expiry Job
-// // =======================
-
-// export async function expireOldOtps() {
-//   try {
-//     const result = await db.query(`
-//       UPDATE otps
-//       SET status = 'expired'
-//       WHERE status = 'active' AND expires_at < NOW()
-//     `);
-//     console.log(`[${new Date().toISOString()}] ✅ Expired ${result.rowCount} OTP(s)`);
-//   } catch (err) {
-//     console.error(`[${new Date().toISOString()}] ❌ Error expiring OTPs:`, err);
-//   }
-// }
-
-// // Start the cron-like job every 5 minutes
-// setInterval(expireOldOtps, 5 * 60 * 1000); // 5 mins in milliseconds
-// expireOldOtps(); // run immediately once at startup
-
-
-import db from '../db.js';
+import { DataTypes, Model, Op } from 'sequelize';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
+import sequelize from '../db.js'; // use your existing db connection
 
-// =======================
-// OTP CRUD Functions
-// =======================
+// Define the OTP model
+class Otp extends Model {}
 
+Otp.init(
+  {
+    id: {
+      type: DataTypes.UUID,
+      primaryKey: true,
+      defaultValue: DataTypes.UUIDV4,
+    },
+    identifier: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    otp: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
+    expires_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    last_sent_at: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    status: {
+      type: DataTypes.ENUM('active', 'expired'),
+      defaultValue: 'active',
+    },
+  },
+  {
+    sequelize,
+    modelName: 'Otp',
+    tableName: 'otps',
+    timestamps: false,
+  }
+);
+
+// ============================
+// OTP Logic Functions
+// ============================
+
+// Create a new OTP entry
 export async function createOtpEntry(identifier, otp) {
   const hashedOtp = await bcrypt.hash(otp, 10);
-  const uuid = uuidv4(); // Generate UUID
 
-  // Expire previous OTPs
-  await db.query(`
-    UPDATE otps
-    SET status = 'expired'
-    WHERE identifier = $1 AND status = 'active'
-  `, [identifier]);
+  await Otp.update(
+    { status: 'expired' },
+    {
+      where: {
+        identifier,
+        status: 'active',
+      },
+    }
+  );
 
-  // Insert new OTP
-  await db.query(`
-    INSERT INTO otps (id, identifier, otp, expires_at, last_sent_at, status)
-    VALUES ($1, $2, $3, NOW() + INTERVAL '5 minutes', NOW(), 'active')
-  `, [uuid, identifier, hashedOtp]);
+  await Otp.create({
+    id: uuidv4(),
+    identifier,
+    otp: hashedOtp,
+    expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    last_sent_at: new Date(),
+    status: 'active',
+  });
 }
 
+// Verify OTP
 export async function verifyOtp(identifier, inputOtp) {
-  const res = await db.query(`
-    SELECT id, otp
-    FROM otps
-    WHERE identifier = $1 AND status = 'active' AND expires_at > NOW()
-    ORDER BY last_sent_at DESC
-    LIMIT 1
-  `, [identifier]);
+  const otpEntry = await Otp.findOne({
+    where: {
+      identifier,
+      status: 'active',
+      expires_at: {
+        [Op.gt]: new Date(),
+      },
+    },
+    order: [['last_sent_at', 'DESC']],
+  });
 
-  if (res.rows.length === 0) return false;
+  if (!otpEntry) return false;
 
-  const match = await bcrypt.compare(inputOtp, res.rows[0].otp);
+  const match = await bcrypt.compare(inputOtp, otpEntry.otp);
   if (match) {
-    await db.query(`UPDATE otps SET status = 'expired' WHERE id = $1`, [res.rows[0].id]);
+    await otpEntry.update({ status: 'expired' });
     return true;
   }
 
   return false;
 }
 
+// Get last OTP sent time
 export async function getLastSentTime(identifier) {
-  const res = await db.query(`
-    SELECT last_sent_at
-    FROM otps
-    WHERE identifier = $1 AND status = 'active'
-    ORDER BY last_sent_at DESC
-    LIMIT 1
-  `, [identifier]);
+  const otp = await Otp.findOne({
+    where: {
+      identifier,
+      status: 'active',
+    },
+    order: [['last_sent_at', 'DESC']],
+  });
 
-  return res.rows.length ? res.rows[0].last_sent_at : null;
+  return otp ? otp.last_sent_at : null;
 }
 
+// Get OTP history
 export async function getOtpHistory(identifier) {
-  const res = await db.query(`
-    SELECT id, last_sent_at, expires_at, status
-    FROM otps
-    WHERE identifier = $1
-    ORDER BY last_sent_at DESC
-  `, [identifier]);
-
-  return res.rows;
+  return await Otp.findAll({
+    where: { identifier },
+    order: [['last_sent_at', 'DESC']],
+    attributes: ['id', 'last_sent_at', 'expires_at', 'status'],
+  });
 }
 
-// =======================
-// Auto Expiry Job
-// =======================
-
+// Expire old OTPs
 export async function expireOldOtps() {
   try {
-    const result = await db.query(`
-      UPDATE otps
-      SET status = 'expired'
-      WHERE status = 'active' AND expires_at < NOW()
-    `);
-    console.log(`[${new Date().toISOString()}] ✅ Expired ${result.rowCount} OTP(s)`);
+    const result = await Otp.update(
+      { status: 'expired' },
+      {
+        where: {
+          status: 'active',
+          expires_at: { [Op.lt]: new Date() },
+        },
+      }
+    );
+    console.log(`[${new Date().toISOString()}] ✅ Expired ${result[0]} OTP(s)`);
   } catch (err) {
     console.error(`[${new Date().toISOString()}] ❌ Error expiring OTPs:`, err);
   }
 }
 
-// Run immediately and then every 5 minutes
+// Optional: run expiration job every 5 mins
 expireOldOtps();
 setInterval(expireOldOtps, 5 * 60 * 1000);
+
+export default Otp;
