@@ -1,9 +1,10 @@
 import { DataTypes, Model, Op } from 'sequelize';
 import bcrypt from 'bcrypt';
 import { v4 as uuidv4 } from 'uuid';
-import sequelize from '../db.js'; // use your existing db connection
+import cron from 'node-cron';
+import sequelize from '../config/db.js'; // make sure path is correct
 
-// Define the OTP model
+// Define the OTP model (table: otptest)
 class Otp extends Model {}
 
 Otp.init(
@@ -37,7 +38,7 @@ Otp.init(
   {
     sequelize,
     modelName: 'Otp',
-    tableName: 'otps',
+    tableName: 'otptest', // <-- Change table name here
     timestamps: false,
   }
 );
@@ -50,6 +51,7 @@ Otp.init(
 export async function createOtpEntry(identifier, otp) {
   const hashedOtp = await bcrypt.hash(otp, 10);
 
+  // Expire old OTPs for same identifier
   await Otp.update(
     { status: 'expired' },
     {
@@ -64,7 +66,7 @@ export async function createOtpEntry(identifier, otp) {
     id: uuidv4(),
     identifier,
     otp: hashedOtp,
-    expires_at: new Date(Date.now() + 5 * 60 * 1000),
+    expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes from now
     last_sent_at: new Date(),
     status: 'active',
   });
@@ -76,14 +78,17 @@ export async function verifyOtp(identifier, inputOtp) {
     where: {
       identifier,
       status: 'active',
-      expires_at: {
-        [Op.gt]: new Date(),
-      },
     },
     order: [['last_sent_at', 'DESC']],
   });
 
   if (!otpEntry) return false;
+
+  // Expired check
+  if (otpEntry.expires_at < new Date()) {
+    await otpEntry.update({ status: 'expired' });
+    return false;
+  }
 
   const match = await bcrypt.compare(inputOtp, otpEntry.otp);
   if (match) {
@@ -134,8 +139,19 @@ export async function expireOldOtps() {
   }
 }
 
-// Optional: run expiration job every 5 mins
-expireOldOtps();
-setInterval(expireOldOtps, 5 * 60 * 1000);
+// ============================
+// Cron Job to Expire OTPs Every Minute
+// ============================
+
+cron.schedule('* * * * *', async () => {
+  await expireOldOtps();
+});
+
+// Sync the model (create table if it doesn't exist)
+sequelize.sync({ alter: true }).then(() => {
+  console.log('✅ otptest table synced');
+}).catch((err) => {
+  console.error('❌ Error syncing table:', err);
+});
 
 export default Otp;
