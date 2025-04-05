@@ -1,11 +1,10 @@
-import express from 'express';
-import { sendOtp, validateOtp, resendOtp } from '../controller/otpController.js';
-import validateInput from '../middlewares/validateInput.js';
-import otpRateLimiter from '../middlewares/rateLimiter.js';
-import apiKeyAuth from '../middlewares/apiKeyAuth.js';
+import express from "express";
+import userRoutes from "./userRoutes.js";
+import otpRoutes from "./otpRoutes.js";
+
 const router = express.Router();
-router.post('/send-otp', apiKeyAuth ,validateInput, otpRateLimiter, sendOtp);
-router.post('/verify-otp', apiKeyAuth,validateOtp);
-router.post('/resend-otp', apiKeyAuth,resendOtp);
+
+router.use(userRoutes);
+router.use(otpRoutes);
 
 export default router;
