@@ -4,7 +4,7 @@ import  apiKeyAuth  from '../middleware/apiKeyAuth.js';
 
 const router = express.Router();
 
-router.get('/languages', apiKeyAuth, getLanguages);
-router.post('/languages', apiKeyAuth, postLanguage);
+router.get('/languages', getLanguages);
+router.post('/languages', postLanguage);
 
 export default router;
