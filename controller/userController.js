@@ -1,5 +1,5 @@
 import sequelize from "../config/db.js";
-import User from "../model/user.js";
+import User from "../model/User.js";
 import { generateToken } from "../utils/jwtToken.js";
 import { validateEmail, validateMobile } from "../utils/commonUtils.js"; // Assuming you have these utilities
 import bcrypt from "bcrypt";
