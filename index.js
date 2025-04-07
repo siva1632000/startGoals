@@ -2,6 +2,7 @@ import express from 'express';
 import bodyParser from 'body-parser';
 import routes from './routes/router.js';
 import dotenv from 'dotenv';
+import "./model/associations.js";
 
 dotenv.config();
 
