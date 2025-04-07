@@ -4,16 +4,14 @@ import {
   userRegistration,
   googleLogin,
   googleCallback,
-  getAllUsers
 } from "../controller/userController.js";
-import { authenticateToken } from "../middlewares/authMiddleware.js";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 import passport from "passport";
 
 const userRoutes = express.Router();
 
 userRoutes.post("/userRegistration", userRegistration);
 userRoutes.post("/userLogin", userLogin);
-userRoutes.get("/getAllUsers", getAllUsers);
 
 userRoutes.get(
   "/googleLogin",

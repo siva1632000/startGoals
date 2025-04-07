@@ -11,5 +11,6 @@ npm install passport-google-oauth20
 npm install bcryptjs
 pg pg-hstore
 node-cron
+joi
 #to start the application
 node index.js
