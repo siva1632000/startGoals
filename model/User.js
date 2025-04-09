@@ -11,6 +11,10 @@ User.init(
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
+    username: {
+      type: DataTypes.STRING,
+      allowNull: false,
+    },
     email: {
       type: DataTypes.STRING,
       allowNull: true,
@@ -41,12 +45,13 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    ...BaseModel.baseFields(), // add createdAt, updatedAt, deletedAt
+    ...BaseModel.baseFields(), // createdAt, updatedAt, deletedAt if included
   },
   {
     sequelize,
-    modelName: "User",
-    ...BaseModel.baseOptions(), // enable paranoid + timestamps
+    modelName: "user",
+    tableName: "user",
+    ...BaseModel.baseOptions(),
   }
 );
 

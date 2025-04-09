@@ -1,8 +1,10 @@
 import sequelize from "../config/db.js";
 import User from "../model/user.js";
+import Language from "../model/language.js";
 import { generateToken } from "../utils/jwtToken.js";
-import { validateEmail, validateMobile } from "../utils/commonUtils.js"; // Assuming you have these utilities
+import { validateEmail, validateMobile } from "../utils/commonUtils.js";
 import bcrypt from "bcrypt";
+import Skill from "../model/skill.js";
 
 export const userRegistration = async (req, res) => {
   try {
@@ -56,6 +58,7 @@ export const userRegistration = async (req, res) => {
       email: email || null,
       mobile: mobile || null,
       password: hashedPassword,
+      isVerified: false,
       isVerified: false,
     });
 
@@ -165,5 +168,143 @@ export const googleCallback = async (req, res) => {
   };
   console.log(userData);
   res.send(userData);
-  // res.redirect("/");
+};
+
+export const addUserLanguages = async (req, res) => {
+  try {
+    const user = req.user;
+    const { languageIds } = req.body;
+
+    if (!Array.isArray(languageIds) || languageIds.length === 0) {
+      return res.status(400).json({
+        message: "languageIds must be a non-empty array",
+        status: false,
+      });
+    }
+
+    const languages = await Language.findAll({ where: { id: languageIds } });
+
+    if (languages.length !== languageIds.length) {
+      return res.status(404).json({
+        message: "One or more languages not found",
+        status: false,
+      });
+    }
+
+    await user.setLanguages(languageIds);
+
+    return res.status(200).json({
+      status: true,
+      message: "Languages updated successfully",
+    });
+  } catch (err) {
+    console.error("Add languages error:", err);
+    res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+export const getUserLanguages = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user.isVerified) {
+      return res.status(403).json({
+        message: "User not verified",
+        status: false,
+      });
+    }
+
+    const userWithLanguages = await User.findByPk(user.id, {
+      include: {
+        model: Language,
+        as: "languages", // alias must match the one used in association
+        attributes: ["id", "language_code", "language_name"],
+        through: { attributes: [] },
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "User languages fetched successfully",
+      data: userWithLanguages.languages,
+    });
+  } catch (err) {
+    console.error("Get languages error:", err);
+    res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+export const addUserSkills = async (req, res) => {
+  try {
+    const user = req.user;
+    const { skillIds } = req.body;
+
+    if (!Array.isArray(skillIds) || skillIds.length === 0) {
+      return res.status(400).json({
+        message: "skillIds must be a non-empty array",
+        status: false,
+      });
+    }
+
+    // Get valid skill records
+    const skills = await Skill.findAll({ where: { id: skillIds } });
+
+    if (skills.length !== skillIds.length) {
+      return res.status(404).json({
+        message: "One or more skills not found",
+        status: false,
+      });
+    }
+
+    // Fetch current skill IDs of the user
+    const existingSkills = await user.getSkills({ attributes: ["id"] });
+    const existingSkillIds = existingSkills.map((skill) => skill.id);
+
+    // Filter out already existing skill IDs
+    const newSkillIds = skillIds.filter((id) => !existingSkillIds.includes(id));
+
+    // Add only new skills
+    if (newSkillIds.length > 0) {
+      await user.addSkills(newSkillIds);
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "Skills updated successfully",
+    });
+  } catch (err) {
+    console.error("Add skills error:", err);
+    res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+// ✅ Get user's skills (only if verified)
+export const getUserSkills = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user.isVerified) {
+      return res.status(403).json({
+        message: "User not verified",
+        status: false,
+      });
+    }
+
+    const userWithSkills = await user.reload({
+      include: {
+        model: Skill,
+        as: "skills",
+        attributes: ["id", "skill"],
+        through: { attributes: [] },
+      },
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "User skills fetched successfully",
+      data: userWithSkills.skills,
+    });
+  } catch (err) {
+    console.error("Get skills error:", err);
+    res.status(500).json({ status: false, message: "Server error" });
+  }
 };
