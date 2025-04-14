@@ -1,5 +1,3 @@
-// controller/otpController.js
-
 import generateOtp from '../utils/generateOtp.js';
 import {
   createOtpEntry,
@@ -9,10 +7,10 @@ import {
 } from '../model/otpModel.js';
 
 import { sendEmailOtp, sendSmsOtp } from '../utils/sendOtp.js';
-import User from '../model/user.js';
+import User from '../model/User.js';
 import { Op } from 'sequelize';
 
-// Send OTP
+// ✅ Send OTP (initial or for password reset)
 export async function sendOtp(req, res) {
   const { identifier, method } = req.body;
 
@@ -39,13 +37,15 @@ export async function sendOtp(req, res) {
   }
 }
 
-// Validate OTP and verify user
+// ✅ Validate OTP (for verification)
 export async function validateOtp(req, res) {
   try {
     const { identifier, otp } = req.body;
 
     const isValid = await verifyOtp(identifier, otp);
-    if (!isValid) return res.status(400).json({ error: 'Invalid or expired OTP' });
+    if (!isValid) {
+      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    }
 
     const user = await User.findOne({
       where: {
@@ -53,7 +53,9 @@ export async function validateOtp(req, res) {
       }
     });
 
-    if (!user) return res.status(404).json({ error: 'User not found' });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
 
     if (user.isVerified) {
       return res.json({ message: 'Account already verified' });
@@ -62,14 +64,25 @@ export async function validateOtp(req, res) {
     user.isVerified = true;
     await user.save();
 
-    res.json({ message: 'OTP verified successfully. Account is now verified.' });
+    return res.json({
+      message: "Login successful",
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        mobile: user.mobile,
+        isVerified: user.isVerified,
+        createdAt: user.createdAt,
+        updatedAt: user.updatedAt
+      },
+    });
   } catch (err) {
     console.error('Error validating OTP:', err);
     res.status(500).json({ error: 'Internal server error during OTP verification' });
   }
 }
 
-// Resend OTP
+// ✅ Resend OTP
 export async function resendOtp(req, res) {
   const { identifier, method } = req.body;
 
@@ -88,15 +101,18 @@ export async function resendOtp(req, res) {
 
     if (method === 'email') await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
-
-    res.json({ message: `OTP resent via ${method}` });
+    res.json({ 
+      success: true,
+      message: `OTP sent to ${identifier}`,
+       });
+    
   } catch (err) {
     console.error('Error resending OTP:', err);
     res.status(500).json({ error: 'Failed to resend OTP' });
   }
 }
 
-// Optional: Fetch OTP history
+// ✅ Fetch OTP history (for debug/logs)
 export async function fetchOtpHistory(req, res) {
   const { identifier } = req.query;
 

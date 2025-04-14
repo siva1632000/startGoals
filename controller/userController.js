@@ -1,11 +1,16 @@
-import sequelize from "../config/db.js";
-import User from "../model/user.js";
+import User from "../model/User.js";
 import Language from "../model/language.js";
+import Skill from "../model/skill.js";
 import { generateToken } from "../utils/jwtToken.js";
 import { validateEmail, validateMobile } from "../utils/commonUtils.js";
 import bcrypt from "bcrypt";
-import Skill from "../model/skill.js";
 
+// ✅ OTP-related imports
+import { sendEmailOtp, sendSmsOtp } from "../utils/sendOtp.js";
+import generateOtp from "../utils/generateOtp.js";
+import { createOtpEntry } from "../model/otpModel.js";
+
+// ✅ User Registration
 export const userRegistration = async (req, res) => {
   try {
     const { username, email, mobile, password } = req.body;
@@ -51,8 +56,6 @@ export const userRegistration = async (req, res) => {
 
     // Step 5: Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Step 6: Create user with isVerified: false by default
     const newUser = await User.create({
       username,
       email: email || null,
@@ -62,17 +65,17 @@ export const userRegistration = async (req, res) => {
       isVerified: false,
     });
 
-    // Response
+    // ✅ Send OTP
+    const identifier = email || mobile;
+    const method = email ? "email" : "sms";
+    const otp = generateOtp();
+    await createOtpEntry(identifier, otp);
+    if (email) await sendEmailOtp(identifier, otp);
+    else await sendSmsOtp(identifier, otp);
+
     return res.status(201).json({
-      message: "User registered successfully",
-      status: true,
-      data: {
-        id: newUser.id,
-        username: newUser.username,
-        email: newUser.email,
-        mobile: newUser.mobile,
-        isVerified: newUser.isVerified,
-      },
+      message: `OTP sent to ${email}.`,
+      success: true,
     });
   } catch (error) {
     console.error("Registration error:", error);
@@ -84,6 +87,7 @@ export const userRegistration = async (req, res) => {
   }
 };
 
+// ✅ User Login
 export const userLogin = async (req, res) => {
   try {
     const { identifier, password } = req.body;
@@ -137,39 +141,50 @@ export const userLogin = async (req, res) => {
     // ✅ Generate and send token
     const token = generateToken(user);
 
-    res.status(200).json({
+    // Track first login status
+    const isFirstLogin = user.firstLogin;
+
+    if (isFirstLogin) {
+      await user.update({ firstLogin: false }); // Mark as logged in
+    }
+
+    return res.status(200).json({
       message: "Login successful.",
-      status: true,
+      success: true,
       data: {
         userId: user.id,
         name: user.name,
         email: user.email,
         mobile: user.mobile,
-        token: token,
+        token,
+        isVerified: user.isVerified,
+        firstTimeLogin: isFirstLogin,
       },
     });
   } catch (error) {
-    res.status(500).json({ message: error.message, status: false });
+    return res.status(500).json({ message: error.message, status: false });
   }
 };
 
+// ✅ Google OAuth Placeholder
 export const googleLogin = async (req, res) => {
-  res.send(
-    '<h1>Home</h1><a href="http://localhost:8080/api/googleLogin">Login with Google</a>'
-  );
+  res.send('<h1>Home</h1><a href="/api/googleLogin">Login with Google</a>');
 };
 
 export const googleCallback = async (req, res) => {
-  if (!req.user) res.redirect("/auth/callback/failure");
+  if (!req.user) return res.redirect("/auth/callback/failure");
+
   const userData = {
     name: JSON.parse(req.user._raw).name,
     email: JSON.parse(req.user._raw).email,
     profile: JSON.parse(req.user._raw).picture,
   };
+
   console.log(userData);
   res.send(userData);
 };
 
+// ✅ Add User Languages
 export const addUserLanguages = async (req, res) => {
   try {
     const user = req.user;
@@ -203,6 +218,7 @@ export const addUserLanguages = async (req, res) => {
   }
 };
 
+// ✅ Get User Languages
 export const getUserLanguages = async (req, res) => {
   try {
     const user = req.user;
@@ -217,7 +233,7 @@ export const getUserLanguages = async (req, res) => {
     const userWithLanguages = await User.findByPk(user.id, {
       include: {
         model: Language,
-        as: "languages", // alias must match the one used in association
+        as: "languages",
         attributes: ["id", "language_code", "language_name"],
         through: { attributes: [] },
       },
@@ -233,6 +249,8 @@ export const getUserLanguages = async (req, res) => {
     res.status(500).json({ status: false, message: "Server error" });
   }
 };
+
+// ✅ Add User Skills
 export const addUserSkills = async (req, res) => {
   try {
     const user = req.user;
@@ -245,7 +263,6 @@ export const addUserSkills = async (req, res) => {
       });
     }
 
-    // Get valid skill records
     const skills = await Skill.findAll({ where: { id: skillIds } });
 
     if (skills.length !== skillIds.length) {
@@ -255,14 +272,10 @@ export const addUserSkills = async (req, res) => {
       });
     }
 
-    // Fetch current skill IDs of the user
     const existingSkills = await user.getSkills({ attributes: ["id"] });
-    const existingSkillIds = existingSkills.map((skill) => skill.id);
-
-    // Filter out already existing skill IDs
+    const existingSkillIds = existingSkills.map((s) => s.id);
     const newSkillIds = skillIds.filter((id) => !existingSkillIds.includes(id));
 
-    // Add only new skills
     if (newSkillIds.length > 0) {
       await user.addSkills(newSkillIds);
     }
@@ -277,7 +290,7 @@ export const addUserSkills = async (req, res) => {
   }
 };
 
-// ✅ Get user's skills (only if verified)
+// ✅ Get User Skills
 export const getUserSkills = async (req, res) => {
   try {
     const user = req.user;
@@ -308,3 +321,48 @@ export const getUserSkills = async (req, res) => {
     res.status(500).json({ status: false, message: "Server error" });
   }
 };
+
+
+export const getUserDetails = async (req, res) => {
+  try {
+    const user = req.user;
+
+    if (!user.isVerified) {
+      return res.status(403).json({
+        message: "User not verified",
+        status: false,
+      });
+    }
+
+    const userDetails = await User.findByPk(user.id, {
+      attributes: ["id", "username", "email", "mobile", "isVerified"],
+      include: [
+        {
+          model: Language,
+          as: "languages",
+          attributes: ["id", "language_code", "language_name"],
+          through: { attributes: [] },
+        },
+        {
+          model: Skill,
+          as: "skills",
+          attributes: ["id", "skill"],
+          through: { attributes: [] },
+        },
+      ],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "User details fetched successfully",
+      data: userDetails,
+    });
+  } catch (error) {
+    console.error("Get user details error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Server error while fetching user details",
+    });
+  }
+};
+

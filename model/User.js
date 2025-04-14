@@ -45,6 +45,10 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    firstLogin: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
     ...BaseModel.baseFields(), // createdAt, updatedAt, deletedAt if included
   },
   {
