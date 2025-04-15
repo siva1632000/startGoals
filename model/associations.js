@@ -7,13 +7,13 @@ import UserSkill from "./userSkill.js";
 // ========== Skill Associations ==========
 User.belongsToMany(Skill, {
   through: UserSkill,
-  as: "skills",
+  as: "skills", // Correct alias
   foreignKey: "userId",
 });
 
 Skill.belongsToMany(User, {
   through: UserSkill,
-  as: "skillUsers",
+  as: "skillUsers", // Optional alias
   foreignKey: "skillId",
 });
 
