@@ -1,4 +1,4 @@
-import Category from "../model/Category.js";
+import Category from "../model/category.js";
 
 // Create a new category
 export const createCategory = async (req, res) => {

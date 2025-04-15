@@ -1,4 +1,5 @@
 import express from "express";
+import { authenticateToken } from "../middleware/authMiddleware.js";
 import {
   createCategory,
   getAllCategories,
