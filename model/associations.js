@@ -1,24 +1,8 @@
 import User from "../model/user.js";
-import Language from "./language.js";
 import Skill from "./skill.js";
 import Course from "../model/course.js";
 import Category from "./category.js";
 import UserSkill from "./userSkill.js";
-
-// ========== Language Associations ==========
-User.belongsToMany(Language, {
-  through: "user_languages",
-  foreignKey: "userId",
-  otherKey: "languageId",
-  as: "languages",
-});
-
-Language.belongsToMany(User, {
-  through: "user_languages",
-  foreignKey: "languageId",
-  otherKey: "userId",
-  as: "languageUsers",
-});
 
 // ========== Skill Associations ==========
 User.belongsToMany(Skill, {
@@ -61,4 +45,4 @@ Course.belongsToMany(User, {
   as: "enrolledUsers",
 });
 
-export { User, Skill, Language, Course, Category, UserSkill };
+export { User, Skill, Course, Category, UserSkill };

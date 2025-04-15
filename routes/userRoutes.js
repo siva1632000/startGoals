@@ -13,7 +13,6 @@ const userRoutes = express.Router();
 userRoutes.post("/userRegistration", userRegistration);
 userRoutes.post("/userLogin", userLogin);
 
-
 userRoutes.get(
   "/googleLogin",
   passport.authenticate("google", { scope: ["profile", "email"] })
