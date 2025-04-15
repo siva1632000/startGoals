@@ -168,7 +168,8 @@ export async function sendResetOtp(req, res) {
   }
 }
 
-// ✅ Verify Reset OTP
+//Verify-password-reset-otp
+
 export async function verifyResetOtp(req, res) {
   const { identifier, otp } = req.body;
 
@@ -178,6 +179,20 @@ export async function verifyResetOtp(req, res) {
       return res.status(400).json({ error: 'Invalid or expired OTP' });
     }
 
+    const user = await User.findOne({
+      where: {
+        [Op.or]: [{ email: identifier }, { mobile: identifier }]
+      }
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // ✅ Mark user eligible for password reset
+    user.passwordResetVerified = true;
+    await user.save();
+
     res.json({ success: true, message: 'OTP verified for password reset' });
   } catch (err) {
     console.error('Error verifying reset OTP:', err);
@@ -185,12 +200,11 @@ export async function verifyResetOtp(req, res) {
   }
 }
 
-// ✅ Reset Password
+
 export async function resetPassword(req, res) {
-  const { identifier, newPassword } = req.body; // No OTP here
+  const { identifier, newPassword } = req.body;
 
   try {
-    // Find user based on identifier (email or mobile)
     const user = await User.findOne({
       where: {
         [Op.or]: [{ email: identifier }, { mobile: identifier }],
@@ -201,9 +215,15 @@ export async function resetPassword(req, res) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Hash the new password
+    // ❌ Block reset if OTP not verified
+    if (!user.passwordResetVerified) {
+      return res.status(403).json({ error: 'OTP verification required before resetting password' });
+    }
+
+    // ✅ Proceed with reset
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     user.password = hashedPassword;
+    user.passwordResetVerified = false; // Invalidate OTP use
     await user.save();
 
     return res.json({ success: true, message: 'Password reset successfully' });
@@ -212,4 +232,6 @@ export async function resetPassword(req, res) {
     res.status(500).json({ error: 'Failed to reset password' });
   }
 }
+
+
 

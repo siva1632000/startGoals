@@ -42,6 +42,7 @@ Otp.init(
       type: DataTypes.ENUM('active', 'expired'),
       defaultValue: 'active',
     },
+    
   },
   {
     sequelize,

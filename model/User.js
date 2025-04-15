@@ -49,6 +49,11 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: true,
     },
+    passwordResetVerified: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    
     ...BaseModel.baseFields(), // createdAt, updatedAt, deletedAt if included
   },
   {
