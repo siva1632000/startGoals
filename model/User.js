@@ -1,10 +1,8 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
-import BaseModel from "./baseModel.js";
 
-class User extends BaseModel {}
-
-User.init(
+const User = sequelize.define(
+  "user",
   {
     id: {
       type: DataTypes.UUID,
@@ -53,14 +51,13 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    
+
     ...BaseModel.baseFields(), // createdAt, updatedAt, deletedAt if included
   },
   {
-    sequelize,
-    modelName: "user",
-    tableName: "user",
-    ...BaseModel.baseOptions(),
+    tableName: "users",
+    timestamps: true,
+    paranoid: true,
   }
 );
 

@@ -1,8 +1,8 @@
-import { DataTypes, Model, Op } from 'sequelize';
-import bcrypt from 'bcrypt';
-import { v4 as uuidv4 } from 'uuid';
-import cron from 'node-cron';
-import sequelize from '../config/db.js';
+import { DataTypes, Model, Op } from "sequelize";
+import bcrypt from "bcrypt";
+import { v4 as uuidv4 } from "uuid";
+import cron from "node-cron";
+import sequelize from "../config/db.js";
 
 // Define the OTP model (table: otptest)
 class Otp extends Model {}
@@ -39,15 +39,15 @@ Otp.init(
       allowNull: false,
     },
     status: {
-      type: DataTypes.ENUM('active', 'expired'),
-      defaultValue: 'active',
+      type: DataTypes.ENUM("active", "expired"),
+      defaultValue: "active",
     },
     
   },
   {
     sequelize,
-    modelName: 'Otp',
-    tableName: 'otptest',
+    modelName: "Otp",
+    tableName: "otptest",
     timestamps: false,
   }
 );
@@ -71,11 +71,11 @@ export async function createOtpEntry(identifier, otp) {
 
   // Expire old OTPs for this identifier
   await Otp.update(
-    { status: 'expired' },
+    { status: "expired" },
     {
       where: {
         identifier,
-        status: 'active',
+        status: "active",
       },
     }
   );
@@ -88,7 +88,7 @@ export async function createOtpEntry(identifier, otp) {
     otp: hashedOtp,
     expires_at: new Date(Date.now() + 5 * 60 * 1000), // 5 minutes
     last_sent_at: new Date(),
-    status: 'active',
+    status: "active",
   });
 }
 
@@ -97,21 +97,21 @@ export async function verifyOtp(identifier, inputOtp) {
   const otpEntry = await Otp.findOne({
     where: {
       identifier,
-      status: 'active',
+      status: "active",
     },
-    order: [['last_sent_at', 'DESC']],
+    order: [["last_sent_at", "DESC"]],
   });
 
   if (!otpEntry) return false;
 
   if (otpEntry.expires_at < new Date()) {
-    await otpEntry.update({ status: 'expired' });
+    await otpEntry.update({ status: "expired" });
     return false;
   }
 
   const match = await bcrypt.compare(inputOtp, otpEntry.otp);
   if (match) {
-    await otpEntry.update({ status: 'expired' });
+    await otpEntry.update({ status: "expired" });
     return true;
   }
 
@@ -123,9 +123,9 @@ export async function getLastSentTime(identifier) {
   const otp = await Otp.findOne({
     where: {
       identifier,
-      status: 'active',
+      status: "active",
     },
-    order: [['last_sent_at', 'DESC']],
+    order: [["last_sent_at", "DESC"]],
   });
 
   return otp ? otp.last_sent_at : null;
@@ -135,8 +135,15 @@ export async function getLastSentTime(identifier) {
 export async function getOtpHistory(identifier) {
   return await Otp.findAll({
     where: { identifier },
-    order: [['last_sent_at', 'DESC']],
-    attributes: ['id', 'email', 'mobile', 'last_sent_at', 'expires_at', 'status'],
+    order: [["last_sent_at", "DESC"]],
+    attributes: [
+      "id",
+      "email",
+      "mobile",
+      "last_sent_at",
+      "expires_at",
+      "status",
+    ],
   });
 }
 
@@ -144,10 +151,10 @@ export async function getOtpHistory(identifier) {
 export async function expireOldOtps() {
   try {
     const result = await Otp.update(
-      { status: 'expired' },
+      { status: "expired" },
       {
         where: {
-          status: 'active',
+          status: "active",
           expires_at: { [Op.lt]: new Date() },
         },
       }
@@ -159,15 +166,8 @@ export async function expireOldOtps() {
 }
 
 // Cron job to expire every minute
-cron.schedule('* * * * *', async () => {
+cron.schedule("* * * * *", async () => {
   await expireOldOtps();
-});
-
-// Sync the table
-sequelize.sync({ alter: true }).then(() => {
-  console.log('✅ otptest table synced');
-}).catch((err) => {
-  console.error('❌ Error syncing table:', err);
 });
 
 export default Otp;

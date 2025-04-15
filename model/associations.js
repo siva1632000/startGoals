@@ -1,6 +1,6 @@
-import User from "../model/user.js";
+import User from "./user.js";
 import Skill from "./skill.js";
-import Course from "../model/course.js";
+import Course from "./course.js";
 import Category from "./category.js";
 import UserSkill from "./userSkill.js";
 
