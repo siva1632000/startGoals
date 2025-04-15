@@ -1,5 +1,4 @@
 import User from "../model/user.js";
-import Language from "../model/language.js";
 import Skill from "../model/skill.js";
 import { generateToken } from "../utils/jwtToken.js";
 import { validateEmail, validateMobile } from "../utils/commonUtils.js";
@@ -8,7 +7,7 @@ import bcrypt from "bcrypt";
 // ✅ OTP-related imports
 import { sendEmailOtp, sendSmsOtp } from "../utils/sendOtp.js";
 import generateOtp from "../utils/generateOtp.js";
-import { createOtpEntry } from "../model/otpModel.js";
+import { createOtpEntry  } from "../model/otpModel.js";
 
 // ✅ User Registration
 export const userRegistration = async (req, res) => {
@@ -184,72 +183,6 @@ export const googleCallback = async (req, res) => {
   res.send(userData);
 };
 
-// ✅ Add User Languages
-export const addUserLanguages = async (req, res) => {
-  try {
-    const user = req.user;
-    const { languageIds } = req.body;
-
-    if (!Array.isArray(languageIds) || languageIds.length === 0) {
-      return res.status(400).json({
-        message: "languageIds must be a non-empty array",
-        status: false,
-      });
-    }
-
-    const languages = await Language.findAll({ where: { id: languageIds } });
-
-    if (languages.length !== languageIds.length) {
-      return res.status(404).json({
-        message: "One or more languages not found",
-        status: false,
-      });
-    }
-
-    await user.setLanguages(languageIds);
-
-    return res.status(200).json({
-      status: true,
-      message: "Languages updated successfully",
-    });
-  } catch (err) {
-    console.error("Add languages error:", err);
-    res.status(500).json({ status: false, message: "Server error" });
-  }
-};
-
-// ✅ Get User Languages
-export const getUserLanguages = async (req, res) => {
-  try {
-    const user = req.user;
-
-    if (!user.isVerified) {
-      return res.status(403).json({
-        message: "User not verified",
-        status: false,
-      });
-    }
-
-    const userWithLanguages = await User.findByPk(user.id, {
-      include: {
-        model: Language,
-        as: "languages",
-        attributes: ["id", "language_code", "language_name"],
-        through: { attributes: [] },
-      },
-    });
-
-    return res.status(200).json({
-      status: true,
-      message: "User languages fetched successfully",
-      data: userWithLanguages.languages,
-    });
-  } catch (err) {
-    console.error("Get languages error:", err);
-    res.status(500).json({ status: false, message: "Server error" });
-  }
-};
-
 // ✅ Add User Skills
 export const addUserSkills = async (req, res) => {
   try {
@@ -319,48 +252,5 @@ export const getUserSkills = async (req, res) => {
   } catch (err) {
     console.error("Get skills error:", err);
     res.status(500).json({ status: false, message: "Server error" });
-  }
-};
-
-export const getUserDetails = async (req, res) => {
-  try {
-    const user = req.user;
-
-    if (!user.isVerified) {
-      return res.status(403).json({
-        message: "User not verified",
-        status: false,
-      });
-    }
-
-    const userDetails = await User.findByPk(user.id, {
-      attributes: ["id", "username", "email", "mobile", "isVerified"],
-      include: [
-        {
-          model: Language,
-          as: "languages",
-          attributes: ["id", "language_code", "language_name"],
-          through: { attributes: [] },
-        },
-        {
-          model: Skill,
-          as: "skills",
-          attributes: ["id", "skill"],
-          through: { attributes: [] },
-        },
-      ],
-    });
-
-    return res.status(200).json({
-      status: true,
-      message: "User details fetched successfully",
-      data: userDetails,
-    });
-  } catch (error) {
-    console.error("Get user details error:", error);
-    return res.status(500).json({
-      status: false,
-      message: "Server error while fetching user details",
-    });
   }
 };
