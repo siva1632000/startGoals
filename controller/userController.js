@@ -228,20 +228,24 @@ export const getUserSkills = async (req, res) => {
   try {
     const user = req.user;
 
-    if (!user.isVerified) {
+    if (!user?.isVerified) {
       return res.status(403).json({
         message: "User not verified",
         status: false,
       });
     }
 
-    const userWithSkills = await user.reload({
-      include: {
-        model: Skill,
-        as: "skills",
-        attributes: ["id", "skill"],
-        through: { attributes: [] },
-      },
+    // Reload user with associated skills (eager loading)
+    const userWithSkills = await User.findOne({
+      where: { id: user.id },
+      include: [
+        {
+          model: Skill,
+          as: "skills", // 👈 Must match association alias
+          attributes: ["id", "skill"],
+          through: { attributes: [] }, // hide junction table
+        },
+      ],
     });
 
     return res.status(200).json({
