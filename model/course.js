@@ -1,4 +1,3 @@
-// model/course.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 
@@ -15,10 +14,8 @@ const Course = sequelize.define("Course", {
   rating: DataTypes.FLOAT,
   skills: {
     type: DataTypes.ARRAY(DataTypes.STRING), // ✅ Add this
-    allowNull: true
-  }
+    allowNull: true,
+  },
 });
 
 export default Course;
-
-

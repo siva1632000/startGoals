@@ -29,7 +29,7 @@ Category.init(
   },
   {
     sequelize,
-    modelName: "Category",
+    modelName: "category",
     tableName: "categories",
     ...BaseModel.baseOptions(), // ⬅️ Include base options like paranoid & timestamps
   }

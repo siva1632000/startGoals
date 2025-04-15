@@ -1,4 +1,4 @@
-import User from "../model/User.js";
+import User from "../model/user.js";
 import Language from "../model/language.js";
 import Skill from "../model/skill.js";
 import { generateToken } from "../utils/jwtToken.js";
@@ -322,7 +322,6 @@ export const getUserSkills = async (req, res) => {
   }
 };
 
-
 export const getUserDetails = async (req, res) => {
   try {
     const user = req.user;
@@ -365,4 +364,3 @@ export const getUserDetails = async (req, res) => {
     });
   }
 };
-
