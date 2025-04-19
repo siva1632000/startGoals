@@ -1,6 +1,5 @@
-import sequelize from "./db.js";
-import "../model/user.js"; // 👈 import all your models here
-import "../model/category.js";
+//import sequelize from "./db.js";
+import models, { sequelize } from "../model/assosiation.js";
 
 export const autoSyncDatabase = async () => {
   try {

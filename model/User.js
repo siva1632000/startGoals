@@ -1,12 +1,12 @@
+// models/user.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
-import BaseModel from "./baseModel.js";
+import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-class User extends BaseModel {}
-
-User.init(
+const User = sequelize.define(
+  "user",
   {
-    id: {
+    userId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -24,6 +24,10 @@ User.init(
     password: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    profileImage: {
+      type: DataTypes.TEXT,
+      allowNull: true,
     },
     role: {
       type: DataTypes.STRING,
@@ -53,14 +57,24 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
-    
-    ...BaseModel.baseFields(), // createdAt, updatedAt, deletedAt if included
+    isOnboarded: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    goalId: {
+      type: DataTypes.UUID,
+      allowNull: true, // Allow null initially
+      references: {
+        model: "goals",
+        key: "goal_id",
+      },
+    },
+
+    ...commonFields, // ✅ createdAt, updatedAt, deletedAt
   },
   {
-    sequelize,
-    modelName: "user",
-    tableName: "user",
-    ...BaseModel.baseOptions(),
+    tableName: "users",
+    ...commonOptions, // ✅ timestamps, paranoid, underscored
   }
 );
 

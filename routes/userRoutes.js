@@ -4,7 +4,7 @@ import {
   userRegistration,
   googleLogin,
   googleCallback,
-
+  getUserDetails,
 } from "../controller/userController.js";
 import passport from "passport";
 
@@ -34,5 +34,6 @@ userRoutes.get("/auth/callback/failure", (req, res) => {
 });
 
 userRoutes.get("/googlePage", googleLogin);
+userRoutes.get("/usersDetailsById/:userId", getUserDetails);
 
 export default userRoutes;

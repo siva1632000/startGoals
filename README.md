@@ -12,6 +12,7 @@ npm install bcryptjs
 pg pg-hstore
 node-cron
 joi
+npm install multer multer-s3 aws-sdk
 #to start the application
 node index.js
 
