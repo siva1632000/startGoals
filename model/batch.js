@@ -1,12 +1,12 @@
-// models/courseTag.js
+// models/batch.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const CourseTag = sequelize.define(
-  "courseTag",
+const Batch = sequelize.define(
+  "batch",
   {
-    courseTagId: {
+    batchId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -14,21 +14,28 @@ const CourseTag = sequelize.define(
     courseId: {
       type: DataTypes.UUID,
       allowNull: false,
-      references: {
-        model: "courses",
-        key: "course_id",
-      },
     },
-    tag: {
+    title: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    ...commonFields, // ✅ shared timestamps and soft delete
+    startTime: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    endTime: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    link: {
+      type: DataTypes.STRING, // Zoom/Meet link
+    },
+    ...commonFields,
   },
   {
-    tableName: "course_tags",
-    ...commonOptions, // ✅ timestamps, paranoid, underscored
+    tableName: "batches",
+    ...commonOptions,
   }
 );
 
-export default CourseTag;
+export default Batch;

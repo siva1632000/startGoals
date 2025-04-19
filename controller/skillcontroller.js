@@ -1,54 +1,118 @@
-import Skill from '../model/skill.js';
-import { isValidSkill } from '../utils/commonUtils.js';
+// controller/skillController.js
+import Skill from "../model/skill.js";
+import Goal from "../model/goal.js";
 
-export const addSkill = async (req, res) => {
+export const bulkUploadSkills = async (req, res) => {
   try {
-    const { skill } = req.body;
+    const skills = req.body;
 
-    if (!isValidSkill(skill)) {
-      return res.status(400).json({ success: false, message: 'Invalid skill name' });
+    if (!Array.isArray(skills) || skills.length === 0) {
+      return res.status(400).json({
+        status: false,
+        message: "Request body must be a non-empty array of skills",
+      });
     }
 
-    const existing = await Skill.findOne({ where: { skill } });
-    if (existing) {
-      return res.status(409).json({ success: false, message: 'Skill already exists' });
+    // Validate each skill
+    for (const skill of skills) {
+      if (
+        !skill.skillName ||
+        typeof skill.skillName !== "string" ||
+        !skill.goalId
+      ) {
+        return res.status(400).json({
+          status: false,
+          message:
+            "Each skill must have a valid 'skillName' and associated 'goalId'",
+        });
+      }
+
+      // Optional: check if the goal exists for each skill
+      const goal = await Goal.findByPk(skill.goalId);
+      if (!goal) {
+        return res.status(400).json({
+          status: false,
+          message: `Invalid goalId for skill: ${skill.skillName}`,
+        });
+      }
     }
 
-    const newSkill = await Skill.create({ skill });
-    res.status(201).json({
-      success: true,
-      data: newSkill,
-      message: 'Skill added successfully',
+    const createdSkills = await Skill.bulkCreate(skills, {
+      ignoreDuplicates: true, // optional
+    });
+
+    return res.status(201).json({
+      status: true,
+      message: "Skills uploaded successfully",
+      data: createdSkills,
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
+    console.error("Bulk upload error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to upload skills",
       error: error.message,
     });
   }
 };
 
-export const getSkills = async (req, res) => {
+export const getAllSkills = async (req, res) => {
   try {
-    const skills = await Skill.findAll();
+    const skills = await Skill.findAll({
+      attributes: ["skillId", "skillName", "goalId"],
+      include: {
+        model: Goal,
+        as: "goal",
+        attributes: ["goalId", "goalName"],
+      },
+      order: [["createdAt", "ASC"]],
+    });
 
-    if (!skills || skills.length === 0) {
+    return res.status(200).json({
+      status: true,
+      message: "Skills fetched successfully",
+      data: skills,
+    });
+  } catch (error) {
+    console.error("Fetch error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch skills",
+      error: error.message,
+    });
+  }
+};
+
+export const getSkillsByGoal = async (req, res) => {
+  try {
+    const { goalId } = req.params;
+
+    // ✅ Step 1: Validate if goal exists
+    const goal = await Goal.findByPk(goalId);
+    if (!goal) {
       return res.status(404).json({
-        success: false,
-        message: 'No skills found',
+        status: false,
+        message: "Goal not found",
       });
     }
 
-    res.status(200).json({
-      success: true,
+    // ✅ Step 2: Fetch all skills for that goal
+    const skills = await Skill.findAll({
+      where: { goalId },
+      attributes: ["skillId", "skillName"],
+      order: [["createdAt", "ASC"]],
+    });
+
+    return res.status(200).json({
+      status: true,
+      message: "Skills fetched successfully",
       data: skills,
-      message: 'Success',
     });
   } catch (error) {
-    res.status(500).json({
-      success: false,
-      message: 'Server error',
+    console.error("Error fetching skills by goal:", error);
+    return res.status(500).json({
+      status: false,
+      message: "Failed to fetch skills by goal",
       error: error.message,
     });
   }

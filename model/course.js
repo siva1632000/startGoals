@@ -1,10 +1,9 @@
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
-import BaseModel from "./baseModel.js";
+import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-class Course extends BaseModel {}
-
-Course.init(
+const Course = sequelize.define(
+  "Course", // Internal Sequelize model name
   {
     courseId: {
       type: DataTypes.UUID,
@@ -14,6 +13,10 @@ Course.init(
     title: {
       type: DataTypes.STRING,
       allowNull: false,
+    },
+    thumbnailUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
     },
     description: {
       type: DataTypes.TEXT,
@@ -25,12 +28,11 @@ Course.init(
     },
     categoryId: {
       type: DataTypes.UUID,
-    },
-    languageId: {
-      type: DataTypes.UUID,
+      allowNull: false,
     },
     createdBy: {
       type: DataTypes.UUID,
+      allowNull: false,
     },
     isPublished: {
       type: DataTypes.BOOLEAN,
@@ -64,13 +66,11 @@ Course.init(
       type: DataTypes.UUID,
       allowNull: true,
     },
-    ...BaseModel.baseFields(),
+    ...commonFields, // includes createdAt, updatedAt, deletedAt
   },
   {
-    sequelize,
-    modelName: "course",
     tableName: "courses",
-    ...BaseModel.baseOptions(),
+    ...commonOptions, // includes timestamps, paranoid, underscored
   }
 );
 

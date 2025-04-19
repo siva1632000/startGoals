@@ -1,12 +1,12 @@
-// models/courseTag.js
+// models/section.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const CourseTag = sequelize.define(
-  "courseTag",
+const Section = sequelize.define(
+  "section",
   {
-    courseTagId: {
+    sectionId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -19,16 +19,25 @@ const CourseTag = sequelize.define(
         key: "course_id",
       },
     },
-    tag: {
+    title: {
       type: DataTypes.STRING,
       allowNull: false,
     },
-    ...commonFields, // ✅ shared timestamps and soft delete
+    description: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+    },
+    order: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    ...commonFields,
   },
   {
-    tableName: "course_tags",
-    ...commonOptions, // ✅ timestamps, paranoid, underscored
+    tableName: "sections",
+    ...commonOptions,
   }
 );
 
-export default CourseTag;
+export default Section;

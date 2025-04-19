@@ -1,10 +1,10 @@
+// models/category.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
-import BaseModel from "./baseModel.js";
+import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-class Category extends BaseModel {}
-
-Category.init(
+const Category = sequelize.define(
+  "courseCategory",
   {
     categoryId: {
       type: DataTypes.UUID,
@@ -25,13 +25,11 @@ Category.init(
         isUppercase: true,
       },
     },
-    ...BaseModel.baseFields(), // ⬅️ Include base fields like createdAt, updatedAt, deletedAt
+    ...commonFields, // ✅ shared fields like createdAt, updatedAt, deletedAt
   },
   {
-    sequelize,
-    modelName: "category",
-    tableName: "categories",
-    ...BaseModel.baseOptions(), // ⬅️ Include base options like paranoid & timestamps
+    tableName: "course_categories",
+    ...commonOptions, // ✅ shared options: timestamps, paranoid, underscored
   }
 );
 

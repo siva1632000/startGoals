@@ -1,44 +1,76 @@
-import generateOtp from "../utils/generateOtp.js";
+import Otp from "../model/otp.js";
 import {
-  createOtpEntry,
+  sendEmailOtp,
+  sendSmsOtp,
   verifyOtp,
   getLastSentTime,
-  getOtpHistory,
-} from "../model/otpModel.js";
-
-import { sendEmailOtp, sendSmsOtp } from "../utils/sendOtp.js";
-import User from "../model/User.js";
+  sendOtp,
+} from "../utils/sendOtp.js";
+import User from "../model/user.js";
 import { Op } from "sequelize";
 import bcrypt from "bcryptjs";
 
-// ✅ Send OTP (initial or for password reset)
-export async function sendOtp(req, res) {
-  const { identifier, method } = req.body;
+const OTP_EXPIRY_MINUTES = 5;
 
+const generateOtp = () =>
+  Math.floor(100000 + Math.random() * 900000).toString();
+
+// ✅ Send OTP (initial or for password reset)
+export const sendOtpApi = async (req, res) => {
   try {
-    const lastSent = await getLastSentTime(identifier);
-    if (lastSent) {
-      const now = new Date();
-      const diff = (now - lastSent) / 1000;
-      if (diff < 60) {
-        return res.status(429).json({
-          error: `Please wait ${60 - Math.floor(diff)} seconds before retrying`,
-        });
-      }
+    const { identifier } = req.body;
+
+    if (!identifier) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Identifier is required" });
     }
 
-    const otp = generateOtp();
-    await createOtpEntry(identifier, otp);
+    // Determine delivery method based on identifier format
+    let deliveryMethod = "email";
+    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(identifier);
+    if (!isEmail) deliveryMethod = "sms";
 
-    if (method === "email") await sendEmailOtp(identifier, otp);
+    const otp = generateOtp();
+    const hashedOtp = await bcrypt.hash(otp, 10);
+    const expiresAt = new Date(Date.now() + OTP_EXPIRY_MINUTES * 60000);
+
+    // Expire old OTPs
+    await Otp.update(
+      { status: "expired" },
+      {
+        where: {
+          identifier,
+          status: "active",
+        },
+      }
+    );
+    // 2️⃣ Soft delete expired or used OTPs
+    await Otp.destroy({
+      where: {
+        identifier,
+        status: {
+          [Op.in]: ["expired", "used"],
+        },
+      },
+    });
+    await Otp.create({
+      id: uuidv4(),
+      identifier,
+      otp: hashedOtp,
+      expiresAt,
+      deliveryMethod,
+    });
+
+    if (deliveryMethod === "email") await sendEmailOtp(identifier, otp);
     else await sendSmsOtp(identifier, otp);
 
-    res.json({ message: `OTP sent via ${method}` });
+    res.json({ status: true, message: `OTP sent via ${method}` });
   } catch (err) {
     console.error("Error sending OTP:", err);
-    res.status(500).json({ error: "Failed to send OTP" });
+    res.status(500).json({ status: false, error: "Failed to send OTP" });
   }
-}
+};
 
 // ✅ Validate OTP (for verification)
 export async function validateOtp(req, res) {
@@ -47,7 +79,10 @@ export async function validateOtp(req, res) {
 
     const isValid = await verifyOtp(identifier, otp);
     if (!isValid) {
-      return res.status(400).json({ error: "Invalid or expired OTP" });
+      return res.status(400).json({
+        error: "Invalid or expired OTP",
+        status: false,
+      });
     }
 
     const user = await User.findOne({
@@ -57,11 +92,17 @@ export async function validateOtp(req, res) {
     });
 
     if (!user) {
-      return res.status(404).json({ error: "User not found" });
+      return res.status(404).json({
+        error: "User not found",
+        status: false,
+      });
     }
 
     if (user.isVerified) {
-      return res.json({ message: "Account already verified" });
+      return res.json({
+        message: "Account already verified",
+        status: true,
+      });
     }
 
     user.isVerified = true;
@@ -69,21 +110,21 @@ export async function validateOtp(req, res) {
 
     return res.json({
       message: "Login successful",
+      status: true,
       user: {
         id: user.id,
         username: user.username,
         email: user.email,
         mobile: user.mobile,
         isVerified: user.isVerified,
-        createdAt: user.createdAt,
-        updatedAt: user.updatedAt,
       },
     });
   } catch (err) {
     console.error("Error validating OTP:", err);
-    res
-      .status(500)
-      .json({ error: "Internal server error during OTP verification" });
+    res.status(500).json({
+      error: "Internal server error during OTP verification",
+      status: false,
+    });
   }
 }
 
@@ -98,6 +139,7 @@ export async function resendOtp(req, res) {
       const diff = (now - lastSent) / 1000;
       if (diff < 60) {
         return res.status(429).json({
+          status: false,
           error: `Please wait ${
             60 - Math.floor(diff)
           } seconds before resending`,
@@ -105,35 +147,15 @@ export async function resendOtp(req, res) {
       }
     }
 
-    const otp = generateOtp();
-    await createOtpEntry(identifier, otp);
-
-    if (method === "email") await sendEmailOtp(identifier, otp);
-    else await sendSmsOtp(identifier, otp);
+    await sendOtp(identifier);
     res.json({
       success: true,
       message: `OTP sent to ${identifier}`,
+      status: true,
     });
   } catch (err) {
     console.error("Error resending OTP:", err);
-    res.status(500).json({ error: "Failed to resend OTP" });
-  }
-}
-
-// ✅ Fetch OTP history (for debug/logs)
-export async function fetchOtpHistory(req, res) {
-  const { identifier } = req.query;
-
-  if (!identifier) {
-    return res.status(400).json({ error: "Identifier is required" });
-  }
-
-  try {
-    const history = await getOtpHistory(identifier);
-    res.json({ history });
-  } catch (err) {
-    console.error("Error fetching OTP history:", err);
-    res.status(500).json({ error: "Failed to fetch OTP history" });
+    res.status(500).json({ status: false, error: "Failed to resend OTP" });
   }
 }
 

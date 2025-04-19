@@ -1,12 +1,12 @@
-// models/courseTag.js
+// models/courseGoal.js
 import { DataTypes } from "sequelize";
 import sequelize from "../config/db.js";
 import { commonFields, commonOptions } from "../utils/baseModelConfig.js";
 
-const CourseTag = sequelize.define(
-  "courseTag",
+const CourseGoal = sequelize.define(
+  "courseGoal",
   {
-    courseTagId: {
+    goalId: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
@@ -19,16 +19,21 @@ const CourseTag = sequelize.define(
         key: "course_id",
       },
     },
-    tag: {
-      type: DataTypes.STRING,
+    goalText: {
+      type: DataTypes.TEXT,
       allowNull: false,
     },
-    ...commonFields, // ✅ shared timestamps and soft delete
+    order: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      defaultValue: 0,
+    },
+    ...commonFields,
   },
   {
-    tableName: "course_tags",
-    ...commonOptions, // ✅ timestamps, paranoid, underscored
+    tableName: "course_goals",
+    ...commonOptions,
   }
 );
 
-export default CourseTag;
+export default CourseGoal;

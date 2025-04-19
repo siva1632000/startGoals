@@ -1,20 +1,25 @@
 import User from "../model/user.js";
 import Skill from "../model/skill.js";
+import Language from "../model/language.js";
+import Goal from "../model/goal.js";
 import { generateToken } from "../utils/jwtToken.js";
-import { validateEmail, validateMobile } from "../utils/commonUtils.js";
+import sequelize from "../config/db.js";
+import {
+  validateEmail,
+  validateMobile,
+  generateOtp,
+} from "../utils/commonUtils.js";
 import bcrypt from "bcrypt";
 
 // ✅ OTP-related imports
-import { sendEmailOtp, sendSmsOtp } from "../utils/sendOtp.js";
-import generateOtp from "../utils/generateOtp.js";
-import { createOtpEntry  } from "../model/otpModel.js";
+import { sendOtp } from "../utils/sendOtp.js";
 
-// ✅ User Registration
 export const userRegistration = async (req, res) => {
+  const trans = await sequelize.transaction();
+
   try {
     const { username, email, mobile, password } = req.body;
 
-    // Step 1: Basic validation
     if (!password || (!email && !mobile)) {
       return res.status(400).json({
         message: "Email or mobile number is required along with password",
@@ -22,23 +27,18 @@ export const userRegistration = async (req, res) => {
       });
     }
 
-    // Step 2: Validate email format
     if (email && !validateEmail(email)) {
-      return res.status(400).json({
-        message: "Invalid email format",
-        status: false,
-      });
+      return res
+        .status(400)
+        .json({ message: "Invalid email format", status: false });
     }
 
-    // Step 3: Validate mobile format
     if (mobile && !validateMobile(mobile)) {
-      return res.status(400).json({
-        message: "Invalid mobile number format",
-        status: false,
-      });
+      return res
+        .status(400)
+        .json({ message: "Invalid mobile number format", status: false });
     }
 
-    // Step 4: Check for existing user (by email or mobile)
     const existingUser = await User.findOne({
       where: {
         ...(email && { email }),
@@ -47,36 +47,38 @@ export const userRegistration = async (req, res) => {
     });
 
     if (existingUser) {
-      return res.status(409).json({
-        message: "User already exists with this email or mobile",
-        status: false,
-      });
+      return res
+        .status(409)
+        .json({ message: "User already exists", status: false });
     }
 
-    // Step 5: Hash the password
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = await User.create({
-      username,
-      email: email || null,
-      mobile: mobile || null,
-      password: hashedPassword,
-      isVerified: false,
-      isVerified: false,
-    });
 
-    // ✅ Send OTP
+    const newUser = await User.create(
+      {
+        username,
+        email: email || null,
+        mobile: mobile || null,
+        password: hashedPassword,
+        isVerified: false,
+      },
+      { transaction: trans }
+    );
+
     const identifier = email || mobile;
-    const method = email ? "email" : "sms";
-    const otp = generateOtp();
-    await createOtpEntry(identifier, otp);
-    if (email) await sendEmailOtp(identifier, otp);
-    else await sendSmsOtp(identifier, otp);
+
+    // Send OTP (if it fails, we roll back the user)
+    console.log("before::::::::::::::::::::");
+    await sendOtp(identifier);
+
+    await trans.commit();
 
     return res.status(201).json({
-      message: `OTP sent to ${email}.`,
-      success: true,
+      message: `OTP sent to ${identifier}`,
+      status: true,
     });
   } catch (error) {
+    await trans.rollback();
     console.error("Registration error:", error);
     return res.status(500).json({
       message: "Server error during registration",
@@ -151,7 +153,7 @@ export const userLogin = async (req, res) => {
       message: "Login successful.",
       success: true,
       data: {
-        userId: user.id,
+        userId: user.userId,
         name: user.name,
         email: user.email,
         mobile: user.mobile,
@@ -256,5 +258,52 @@ export const getUserSkills = async (req, res) => {
   } catch (err) {
     console.error("Get skills error:", err);
     res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+//user details by userId , languages ,goals ,skill will also come
+export const getUserDetails = async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const user = await User.findByPk(userId, {
+      attributes: { exclude: ["password"] }, // Optional: Hide sensitive data
+      include: [
+        {
+          model: Language,
+          as: "languages", // 👈 Use alias if defined in association
+          through: { attributes: [] }, // Exclude join table fields
+        },
+        {
+          model: Goal,
+          as: "goal", // 👈 Use alias if defined
+        },
+        {
+          model: Skill,
+          as: "skills", // 👈 Use alias if defined
+          through: { attributes: [] },
+        },
+      ],
+    });
+
+    if (!user) {
+      return res.status(404).json({
+        status: false,
+        message: "User not found",
+      });
+    }
+
+    return res.status(200).json({
+      status: true,
+      message: "User details fetched successfully",
+      data: user,
+    });
+  } catch (error) {
+    console.error("Error fetching user details:", error);
+    return res.status(500).json({
+      status: false,
+      message: "An error occurred while fetching user details",
+      error: error.message,
+    });
   }
 };
