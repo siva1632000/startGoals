@@ -244,18 +244,20 @@ Batch.belongsTo(Course, {
 Batch.belongsToMany(User, {
   through: "batch_students", // Join table
   foreignKey: "batchId", // Foreign key in batch_students table
-  otherKey: "studentId", // Foreign key in batch_students table
+  otherKey: "userId", // Foreign key in batch_students table
 });
 
 User.belongsToMany(Batch, {
   through: "batch_students", // Join table
-  foreignKey: "studentId", // Foreign key in batch_students table
+  foreignKey: "userId", // Foreign key in batch_students table
   otherKey: "batchId", // Foreign key in batch_students table
 });
 
 // enrollement Associations with User and Course models
 Enrollment.belongsTo(User, { foreignKey: "userId" });
 Enrollment.belongsTo(Course, { foreignKey: "courseId" });
+//enrollment
+Enrollment.belongsTo(Batch, { foreignKey: "batchId" });
 
 // Course → Batches
 Course.hasMany(Batch, {

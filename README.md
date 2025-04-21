@@ -13,6 +13,7 @@ pg pg-hstore
 node-cron
 joi
 npm install multer multer-s3 aws-sdk
+npm install agora-access-token
 #to start the application
 node index.js
 

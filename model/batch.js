@@ -27,8 +27,13 @@ const Batch = sequelize.define(
       type: DataTypes.DATE,
       allowNull: false,
     },
-    link: {
-      type: DataTypes.STRING, // Zoom/Meet link
+    createdBy: {
+      type: DataTypes.UUID,
+      allowNull: false,
+      references: {
+        model: "users",
+        key: "user_id",
+      },
     },
     ...commonFields,
   },
