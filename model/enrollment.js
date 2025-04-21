@@ -30,7 +30,18 @@ const Enrollment = sequelize.define(
       type: DataTypes.DATE,
       defaultValue: DataTypes.NOW,
     },
-
+    validTill: {
+      type: DataTypes.DATE,
+      allowNull: false,
+    },
+    batchId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+      references: {
+        model: "batches",
+        key: "batch_id",
+      },
+    },
     ...commonFields, // Include shared fields like createdAt, updatedAt, deletedAt
   },
   {

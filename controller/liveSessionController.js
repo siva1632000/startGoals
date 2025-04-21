@@ -3,7 +3,9 @@ import sequelize from "../config/db.js";
 import LiveSession from "../model/liveSession.js";
 import Batch from "../model/batch.js";
 import Course from "../model/course.js";
-
+import { generateToken } from "../config/agoraConfig.js";
+import AgoraAccessToken from "agora-access-token";
+const { RtcRole } = AgoraAccessToken;
 export const createLiveSession = async (req, res) => {
   const t = await sequelize.transaction();
   try {
@@ -99,5 +101,31 @@ export const createLiveSession = async (req, res) => {
       message: "Internal server error",
       error: error.message,
     });
+  }
+};
+
+export const liveSessionCreation = async (req, res) => {
+  try {
+    const { channelName, userId, expiryTime } = req.body;
+
+    if (!channelName || !userId) {
+      return res.status(400).json({ status: false, message: "Missing fields" });
+    }
+
+    const data = generateToken(
+      channelName,
+      userId,
+      RtcRole.PUBLISHER,
+      expiryTime
+    );
+    return res.status(200).json({
+      status: true,
+      token: data.token,
+      appId: data.appId,
+      channelName,
+    });
+  } catch (err) {
+    console.error("Agora token error:", err);
+    res.status(500).json({ status: false, message: "Server error" });
   }
 };

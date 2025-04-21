@@ -10,6 +10,7 @@ import courseRoutes from "./courseRoutes.js";
 import courseLevelRoutes from "./courseLevelRoutes.js";
 import sectionRoutes from "./sectionRoutes.js";
 import liveSessionRoutes from "./liveSessionRoutes.js";
+import batchRoutes from "./batchRoutes.js";
 
 const router = express.Router();
 
@@ -24,5 +25,6 @@ router.use(courseRoutes);
 router.use(courseLevelRoutes);
 router.use(sectionRoutes);
 router.use(liveSessionRoutes);
+router.use(batchRoutes);
 
 export default router;
