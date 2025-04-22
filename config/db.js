@@ -74,11 +74,11 @@ import { Sequelize } from "sequelize";
 
 // Replace env usage with actual values
 const sequelize = new Sequelize(
-  "startGoals",               // DATABASE
-  "postgres",             // DB_USER
+  "StartGoals",               // DATABASE
+  "StartGoals",             // DB_USER
   "Startgoals12345",          // DB_PASSWORD
   {
-    host: "database-2.clwec8g8o0f2.eu-north-1.rds.amazonaws.com",    // DB_HOST
+    host: "mydatabase.clwec8g8o0f2.eu-north-1.rds.amazonaws.com",    // DB_HOST
     dialect: "postgres",  // DB_DIALECT
   }
 );
