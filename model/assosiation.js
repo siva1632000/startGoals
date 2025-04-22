@@ -1,6 +1,5 @@
 import sequelize from "../config/db.js";
-//For Testing
-import User from "./User.js";
+import User from "./user.js";
 import Language from "./language.js";
 import Opt from "./otp.js";
 import Course from "./course.js";
