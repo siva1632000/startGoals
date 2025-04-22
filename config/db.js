@@ -33,35 +33,64 @@
 // }
 
 // export default sequelize;
+
+
+// import { Sequelize } from "sequelize";
+// import dotenv from "dotenv";
+
+// dotenv.config();
+
+// const sequelize = new Sequelize(
+//   process.env.DATABASE,
+//   process.env.DB_USER,
+//   process.env.DB_PASSWORD,
+//   {
+//     host: process.env.DB_HOST,
+//     dialect: process.env.DB_DIALECT,
+
+//     // dialectOptions: {
+//     //   ssl: {
+//     //     require: true,
+//     //     rejectUnauthorized: false,
+//     //   },
+//     // },
+//   }
+// );
+
+// (async () => {
+//   try {
+//     await sequelize.authenticate();
+//     console.log("database connection successfull");
+//   } catch (error) {
+//     console.log("database connection failed", error);
+//   }
+// })();
+
+// export default sequelize;
+
+
+
 import { Sequelize } from "sequelize";
-import dotenv from "dotenv";
 
-dotenv.config();
-
+// Replace env usage with actual values
 const sequelize = new Sequelize(
-  process.env.DATABASE,
-  process.env.DB_USER,
-  process.env.DB_PASSWORD,
+  "userdb",               // DATABASE
+  "postgres",             // DB_USER
+  "Thanush@123",          // DB_PASSWORD
   {
-    host: process.env.DB_HOST,
-    dialect: process.env.DB_DIALECT,
-
-    // dialectOptions: {
-    //   ssl: {
-    //     require: true,
-    //     rejectUnauthorized: false,
-    //   },
-    // },
+    host: "localhost",    // DB_HOST
+    dialect: "postgres",  // DB_DIALECT
   }
 );
 
 (async () => {
   try {
     await sequelize.authenticate();
-    console.log("database connection successfull");
+    console.log("✅ Database connection successful");
   } catch (error) {
-    console.log("database connection failed", error);
+    console.error("❌ Database connection failed:", error);
   }
 })();
 
 export default sequelize;
+
