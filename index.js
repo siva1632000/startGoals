@@ -50,3 +50,9 @@ autoSyncDatabase()
   .catch((err) => {
     console.error("💥 Failed to start server due to DB sync error");
   });
+
+  DB_USER="postgres"
+  DB_PASSWORD="StartGoals12345"
+  DATABASE="startGoals"
+  DB_HOST="database-2.clwec8g8o0f2.eu-north-1.rds.amazonaws.com"
+  DB_DIALECT="postgres"
