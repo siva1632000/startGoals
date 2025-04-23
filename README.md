@@ -16,6 +16,7 @@ npm install multer multer-s3 aws-sdk
 npm install agora-access-token
 #to start the application
 node index.js
+Github work flow added
 
 # in developemnt to run the app
 
