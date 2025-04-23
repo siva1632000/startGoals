@@ -111,7 +111,9 @@ export const liveSessionCreation = async (req, res) => {
     if (!channelName || !userId) {
       return res.status(400).json({ status: false, message: "Missing fields" });
     }
-
+    // // role should be passed in body or query (publisher or subscriber)
+    // const role =
+    //   req.body.role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
     const data = generateToken(
       channelName,
       userId,
