@@ -35,14 +35,14 @@ jobs:
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.AWS_HOST }} << 'EOF'
             # Navigate to the project directory (replace with actual directory on EC2)
-            cd /path/to/your/project || exit
+            cd /usr/share/nginx/html/backend/startGoals || exit
             
             # Pull the latest changes from GitHub
             git pull origin main || exit
 
             # Install dependencies and restart the app
             npm install || exit
-            pm2 restart app || exit  # Assuming you are using PM2 for process management
+            pm2 restart startGoals || exit  # Assuming you are using PM2 for process management
 
             # You can add additional commands like migrations, building, etc.
           EOF
