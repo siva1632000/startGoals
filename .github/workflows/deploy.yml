@@ -1,0 +1,48 @@
+name: Deploy to EC2
+
+# Trigger this action on push to the main branch
+on:
+  push:
+    branches:
+      - main # You can change this to the branch you want to deploy from (e.g., 'develop')
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v2
+        with:
+          node-version: "18" # Specify the version of Node.js you're using
+
+      - name: Install dependencies
+        run: |
+          npm install
+          # Or use 'yarn install' if you're using Yarn instead of npm
+
+      - name: Copy SSH private key to GitHub Actions
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.AWS_SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Deploy to EC2
+        run: |
+          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.AWS_HOST }} << 'EOF'
+            # Navigate to the project directory (replace with actual directory on EC2)
+            cd /path/to/your/project || exit
+            
+            # Pull the latest changes from GitHub
+            git pull origin main || exit
+
+            # Install dependencies and restart the app
+            npm install || exit
+            pm2 restart app || exit  # Assuming you are using PM2 for process management
+
+            # You can add additional commands like migrations, building, etc.
+          EOF
