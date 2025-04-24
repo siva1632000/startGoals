@@ -28,9 +28,9 @@ jobs:
           chmod 600 ~/.ssh/id_rsa
           ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
 
-      - name: Deploy to EC2
+      - name: Deploy to Ubuntu EC2
         run: |
-          ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.AWS_HOST }} << 'EOF'
+          ssh -tt -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.AWS_HOST }} << 'EOF'
             echo "🔄 Navigating to project directory..."
             cd /usr/share/nginx/html/backend/startGoals || exit 1
 
