@@ -16,21 +16,24 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: "18"
+          node-version: "18" # Specify the version of Node.js you're using
 
-      - name: Install dependencies (for build-time tools if any)
-        run: npm install
+      - name: Install dependencies
+        run: npm install # Install dependencies if any build tools are used
 
       - name: Copy SSH private key to GitHub Actions
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.AWS_SSH_KEY }}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts
+          echo "${{ secrets.AWS_SSH_KEY }}" > ~/.ssh/id_rsa  # SSH private key stored as a secret
+          chmod 600 ~/.ssh/id_rsa  # Set correct permissions for the key
+          ssh-keyscan -H ${{ secrets.AWS_HOST }} >> ~/.ssh/known_hosts  # Add the EC2 host to known hosts
 
       - name: Deploy to Ubuntu EC2
         run: |
           ssh -tt -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.AWS_HOST }} << 'EOF'
+            # Enable error handling, so the script stops on any failure
+            set -e
+
             echo "🔄 Navigating to project directory..."
             cd /usr/share/nginx/html/backend/startGoals || exit 1
 
@@ -41,6 +44,7 @@ jobs:
             npm install || exit 1
 
             echo "🚀 Restarting app using PM2..."
+            # Check if PM2 is running, and restart if already running, or start a new process
             if pm2 list | grep -q startGoals; then
               pm2 restart startGoals || exit 1
             else
@@ -48,4 +52,5 @@ jobs:
             fi
 
             echo "✅ Deployment completed successfully!"
+            exit 0  # Exit cleanly
           EOF
