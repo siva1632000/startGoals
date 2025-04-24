@@ -1,10 +1,9 @@
 name: Deploy to EC2
 
-# Trigger this action on push to the main branch
 on:
   push:
     branches:
-      - main # You can change this to the branch you want to deploy from (e.g., 'develop')
+      - main # Trigger deployment on push to the main branch
 
 jobs:
   deploy:
@@ -17,12 +16,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v2
         with:
-          node-version: "18" # Specify the version of Node.js you're using
+          node-version: "18"
 
-      - name: Install dependencies
-        run: |
-          npm install
-          # Or use 'yarn install' if you're using Yarn instead of npm
+      - name: Install dependencies (for build-time tools if any)
+        run: npm install
 
       - name: Copy SSH private key to GitHub Actions
         run: |
@@ -34,15 +31,21 @@ jobs:
       - name: Deploy to EC2
         run: |
           ssh -o StrictHostKeyChecking=no -i ~/.ssh/id_rsa ubuntu@${{ secrets.AWS_HOST }} << 'EOF'
-            # Navigate to the project directory (replace with actual directory on EC2)
-            cd /usr/share/nginx/html/backend/startGoals || exit
-            
-            # Pull the latest changes from GitHub
-            git pull origin main || exit
+            echo "🔄 Navigating to project directory..."
+            cd /usr/share/nginx/html/backend/startGoals || exit 1
 
-            # Install dependencies and restart the app
-            npm install || exit
-            pm2 restart startGoals || exit  # Assuming you are using PM2 for process management
+            echo "📥 Pulling latest code from GitHub..."
+            git pull origin main || exit 1
 
-            # You can add additional commands like migrations, building, etc.
+            echo "📦 Installing dependencies..."
+            npm install || exit 1
+
+            echo "🚀 Restarting app using PM2..."
+            if pm2 list | grep -q startGoals; then
+              pm2 restart startGoals || exit 1
+            else
+              pm2 start index.js --name startGoals || exit 1
+            fi
+
+            echo "✅ Deployment completed successfully!"
           EOF
