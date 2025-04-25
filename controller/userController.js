@@ -18,7 +18,7 @@ export const userRegistration = async (req, res) => {
   const trans = await sequelize.transaction();
 
   try {
-    const { username, email, mobile, password } = req.body;
+    const { username, email, mobile, password, role } = req.body;
 
     if (!password || (!email && !mobile)) {
       return res.status(400).json({
@@ -60,7 +60,9 @@ export const userRegistration = async (req, res) => {
         email: email || null,
         mobile: mobile || null,
         password: hashedPassword,
+        role: role,
         isVerified: false,
+        provider: "local", // ✅ explicitly add this
       },
       { transaction: trans }
     );
@@ -68,7 +70,6 @@ export const userRegistration = async (req, res) => {
     const identifier = email || mobile;
 
     // Send OTP (if it fails, we roll back the user)
-    console.log("before::::::::::::::::::::");
     await sendOtp(identifier);
 
     await trans.commit();
@@ -167,22 +168,81 @@ export const userLogin = async (req, res) => {
   }
 };
 
-// ✅ Google OAuth Placeholder
-export const googleLogin = async (req, res) => {
-  res.send('<h1>Home</h1><a href="/api/googleLogin">Login with Google</a>');
-};
-
 export const googleCallback = async (req, res) => {
-  if (!req.user) return res.redirect("/auth/callback/failure");
+  try {
+    // Validate if user data is present from Google
+    if (!req.user || !req.user._json) {
+      return res.status(400).json({
+        status: false,
+        message: "Google login failed. No user info received.",
+      });
+    }
 
-  const userData = {
-    name: JSON.parse(req.user._raw).name,
-    email: JSON.parse(req.user._raw).email,
-    profile: JSON.parse(req.user._raw).picture,
-  };
+    const profile = req.user._json;
 
-  console.log(userData);
-  res.send(userData);
+    console.log(profile);
+
+    // Validate necessary fields from profile
+    if (!profile.email || !profile.name) {
+      return res.status(400).json({
+        status: false,
+        message: "Required Google profile information is missing.",
+      });
+    }
+
+    // Check if user exists in DB
+    let user = await User.findOne({ where: { email: profile.email } });
+
+    // If not, create the user
+    if (!user) {
+      user = await User.create({
+        username: profile.name,
+        email: profile.email,
+        profileImage: profile.picture || null,
+        googleId: profile.sub, // Save Google user ID here
+        provider: "google",
+        isVerified: true,
+        role: "student",
+        firstLogin: true,
+      });
+      // Generate a JWT token for the user
+      const token = generateToken(user);
+
+      return res.redirect(
+        `http://localhost:3000/google-login-success?token=${token}&status=true`
+      );
+    }
+
+    // Generate a JWT token for the user
+    const token = generateToken(user);
+
+    // Redirect or respond with token
+    // For redirect:
+    return res.redirect(
+      `http://localhost:3000/google-login-success?token=${token}&status=true`
+    );
+
+    // Or to send a direct response (if frontend expects JSON):
+    // return res.status(200).json({
+    //   status: true,
+    //   message: "Login successful",
+    //   token,
+    //   user: {
+    //     id: user.id,
+    //     username: user.username,
+    //     email: user.email,
+    //     profileImage: user.profileImage,
+    //     role: user.role,
+    //   },
+    // });
+  } catch (error) {
+    console.error("Google callback error:", error);
+    return res.status(500).json({
+      status: false,
+      message: "An internal error occurred during Google authentication",
+      error: error.message,
+    });
+  }
 };
 
 // ✅ Add User Skills

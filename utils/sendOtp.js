@@ -21,13 +21,47 @@ const transporter = nodemailer.createTransport({
 
 const client = twilio(process.env.TWILIO_SID, process.env.TWILIO_AUTH);
 
+// export async function sendEmailOtp(to, otp) {
+//   await transporter.sendMail({
+//     from: `"START GOALS" <${process.env.EMAIL_USER}>`,
+//     to,
+//     subject: "Your OTP Code",
+//     html: `<p>Your OTP code is: <b>${otp}</b>. It expires in 5 minutes.</p>`,
+//   });
+// }
+
 export async function sendEmailOtp(to, otp) {
-  await transporter.sendMail({
-    from: `"START GOALS" <${process.env.EMAIL_USER}>`,
-    to,
-    subject: "Your OTP Code",
-    html: `<p>Your OTP code is: <b>${otp}</b>. It expires in 5 minutes.</p>`,
-  });
+  try {
+    const mailOptions = {
+      from: `"START GOALS" <${process.env.EMAIL_USER}>`,
+      to,
+      subject: "Verify your email - OTP Code",
+      text: `Your OTP code is: ${otp}. It expires in 5 minutes.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; font-size: 16px;">
+          <p>Hello,</p>
+          <p>Your OTP code is: <b>${otp}</b></p>
+          <p>This code will expire in <b>5 minutes</b>.</p>
+          <br/>
+          <p>If you didn't request this, you can safely ignore it.</p>
+          <br/>
+          <p>Regards,</p>
+          <p><strong>START GOALS Team</strong></p>
+        </div>
+      `,
+      headers: {
+        "X-Priority": "1 (Highest)",
+        "X-MSMail-Priority": "High",
+        Importance: "High",
+      },
+    };
+
+    await transporter.sendMail(mailOptions);
+    console.log(`OTP email sent to ${to}`);
+  } catch (error) {
+    console.error("Error sending OTP email:", error);
+    throw new Error("Failed to send OTP email");
+  }
 }
 
 export async function sendSmsOtp(to, otp) {
