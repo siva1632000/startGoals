@@ -52,5 +52,5 @@ jobs:
             fi
 
             echo "✅ Deployment completed successfully!"
-            exit 0  # Exit cleanly
+            exit true  # Exit cleanly
           EOF
