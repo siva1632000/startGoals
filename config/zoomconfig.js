@@ -1,5 +1,6 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import crypto from "crypto";
 
 dotenv.config();
 
@@ -29,5 +30,32 @@ export const getZoomAccessToken = async () => {
       error.response?.data || error.message
     );
     throw new Error("Unable to retrieve Zoom access token");
+  }
+};
+
+// controllers/zoomController.js
+
+export const generateSignature = (req, res) => {
+  try {
+    const { meetingNumber, role } = req.body;
+
+    const timestamp = new Date().getTime() - 30000;
+    const msg = Buffer.from(
+      `${process.env.ZOOM_API_KEY}${meetingNumber}${timestamp}${role}`
+    ).toString("base64");
+
+    const hash = crypto
+      .createHmac("sha256", process.env.ZOOM_API_SECRET)
+      .update(msg)
+      .digest("base64");
+
+    const signature = Buffer.from(
+      `${process.env.ZOOM_API_KEY}.${meetingNumber}.${timestamp}.${role}.${hash}`
+    ).toString("base64");
+
+    res.status(200).json({ signature });
+  } catch (error) {
+    console.error("Error generating Zoom signature:", error);
+    res.status(500).json({ message: "Internal server error" });
   }
 };

@@ -7,6 +7,7 @@ import { generateToken } from "../config/agoraConfig.js";
 import AgoraAccessToken from "agora-access-token";
 import axios from "axios";
 import { getZoomAccessToken } from "../config/zoomconfig.js";
+import { Certificate } from "crypto";
 
 const { RtcRole } = AgoraAccessToken;
 export const createLiveSession = async (req, res) => {
@@ -109,25 +110,23 @@ export const createLiveSession = async (req, res) => {
 
 export const liveSessionCreation = async (req, res) => {
   try {
-    const { channelName, userId, expiryTime } = req.body;
+    const { channelName, userId, expiryTime, role } = req.body;
 
     if (!channelName || !userId) {
       return res.status(400).json({ status: false, message: "Missing fields" });
     }
     // // role should be passed in body or query (publisher or subscriber)
-    // const role =
-    //   req.body.role === "publisher" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
-    const data = generateToken(
-      channelName,
-      userId,
-      RtcRole.PUBLISHER,
-      expiryTime
-    );
+    role === "host" ? RtcRole.PUBLISHER : RtcRole.SUBSCRIBER;
+    const data = generateToken(channelName, userId, role, expiryTime);
     return res.status(200).json({
       status: true,
       token: data.token,
       appId: data.appId,
       channelName,
+      userId,
+      role,
+      certificate: data.certificate,
+      expiryTime: data.privilegeExpiredTs,
     });
   } catch (err) {
     console.error("Agora token error:", err);

@@ -27,6 +27,10 @@ export function generateToken(
   const data = {
     token: token,
     appId: agoraAppId,
+    certificate: agoraAppCertificate,
+    role,
+    userId,
+    privilegeExpiredTs,
   };
 
   return data;
