@@ -5,6 +5,9 @@ import Batch from "../model/batch.js";
 import Course from "../model/course.js";
 import { generateToken } from "../config/agoraConfig.js";
 import AgoraAccessToken from "agora-access-token";
+import axios from "axios";
+import { getZoomAccessToken } from "../config/zoomconfig.js";
+
 const { RtcRole } = AgoraAccessToken;
 export const createLiveSession = async (req, res) => {
   const t = await sequelize.transaction();
@@ -129,5 +132,44 @@ export const liveSessionCreation = async (req, res) => {
   } catch (err) {
     console.error("Agora token error:", err);
     res.status(500).json({ status: false, message: "Server error" });
+  }
+};
+
+export const createZoomLive = async (req, res) => {
+  try {
+    const accessToken = await getZoomAccessToken();
+
+    const meetingConfig = {
+      topic: req.body.topic || "Live Class",
+      type: 1, // Instant Meeting
+      settings: {
+        join_before_host: true,
+        approval_type: 0,
+        host_video: true,
+        participant_video: true,
+      },
+    };
+
+    const meetingResponse = await axios.post(
+      "https://api.zoom.us/v2/users/me/meetings",
+      meetingConfig,
+      {
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    res.status(200).json({
+      message: "Meeting created successfully",
+      data: meetingResponse.data,
+    });
+  } catch (error) {
+    console.error("Error creating Zoom meeting:", error);
+    res.status(500).json({
+      message: "Failed to create Zoom meeting",
+      error: error.message,
+    });
   }
 };
