@@ -23,7 +23,7 @@ const User = sequelize.define(
     },
     password: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true,
     },
     profileImage: {
       type: DataTypes.TEXT,
@@ -36,6 +36,16 @@ const User = sequelize.define(
         isIn: [["admin", "owner", "teacher", "student"]],
       },
       defaultValue: "student",
+    },
+    provider: {
+      type: DataTypes.STRING,
+      allowNull: false,
+      defaultValue: "local", // local | google | facebook | etc.
+    },
+    googleId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
     },
     mobile: {
       type: DataTypes.STRING,
