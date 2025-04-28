@@ -20,9 +20,17 @@ export const userRegistration = async (req, res) => {
   try {
     const { username, email, mobile, password, role } = req.body;
 
-    if (!password || (!email && !mobile)) {
+    if (!email && !mobile) {
       return res.status(400).json({
-        message: "Email or mobile number is required along with password",
+        message: "Email or mobile number is required",
+        status: false,
+      });
+    }
+
+    // ✅ Password is required only if role is not 'student'
+    if (role !== "student" && !password) {
+      return res.status(400).json({
+        message: "Password is required for non-student roles",
         status: false,
       });
     }
@@ -52,7 +60,7 @@ export const userRegistration = async (req, res) => {
         .json({ message: "User already exists", status: false });
     }
 
-    const hashedPassword = await bcrypt.hash(password, 10);
+    const hashedPassword = password ? await bcrypt.hash(password, 10) : null;
 
     const newUser = await User.create(
       {
@@ -60,17 +68,16 @@ export const userRegistration = async (req, res) => {
         email: email || null,
         mobile: mobile || null,
         password: hashedPassword,
-        role: role,
+        role,
         isVerified: false,
-        provider: "local", // ✅ explicitly add this
+        provider: "local",
       },
       { transaction: trans }
     );
 
     const identifier = email || mobile;
 
-    // Send OTP (if it fails, we roll back the user)
-    await sendOtp(identifier);
+    await sendOtp(identifier); // Rollback happens on failure
 
     await trans.commit();
 
@@ -94,13 +101,12 @@ export const userLogin = async (req, res) => {
   try {
     const { identifier, password } = req.body;
 
-    if (!identifier || !password) {
+    if (!identifier) {
       return res.status(400).json({
-        message: "Email or mobile and password are required.",
+        message: "Email or mobile is required.",
         status: false,
       });
     }
-
     let user;
 
     // Determine if identifier is email or mobile
@@ -131,38 +137,60 @@ export const userLogin = async (req, res) => {
       });
     }
 
-    // ✅ Check password match
-    const isPasswordCorrect = await bcrypt.compare(password, user.password);
-    if (!isPasswordCorrect) {
-      return res.status(401).json({
-        message: "Invalid credentials.",
-        status: false,
+    if (user.role === "student") {
+      // 🟰 For student, send OTP immediately instead of checking password
+
+      // Send OTP
+      await sendOtp(identifier); // ✅ sending OTP via utils/sendOtp.js
+
+      return res.status(200).json({
+        message: `OTP sent to ${identifier}. Please verify OTP to continue.`,
+        status: true,
+        needOtpVerification: true, // frontend can use this flag
+      });
+    } else {
+      // 🔒 Other roles require password
+
+      if (!password) {
+        return res.status(400).json({
+          message: "Password is required for this user.",
+          status: false,
+        });
+      }
+
+      // ✅ Check password match
+      const isPasswordCorrect = await bcrypt.compare(password, user.password);
+      if (!isPasswordCorrect) {
+        return res.status(401).json({
+          message: "Invalid credentials.",
+          status: false,
+        });
+      }
+
+      // ✅ Generate and send token
+      const token = generateToken(user);
+
+      // Track first login status
+      const isFirstLogin = user.firstLogin;
+
+      if (isFirstLogin) {
+        await user.update({ firstLogin: false }); // Mark as logged in
+      }
+
+      return res.status(200).json({
+        message: "Login successful.",
+        success: true,
+        data: {
+          userId: user.userId,
+          name: user.name,
+          email: user.email,
+          mobile: user.mobile,
+          token,
+          isVerified: user.isVerified,
+          firstTimeLogin: isFirstLogin,
+        },
       });
     }
-
-    // ✅ Generate and send token
-    const token = generateToken(user);
-
-    // Track first login status
-    const isFirstLogin = user.firstLogin;
-
-    if (isFirstLogin) {
-      await user.update({ firstLogin: false }); // Mark as logged in
-    }
-
-    return res.status(200).json({
-      message: "Login successful.",
-      success: true,
-      data: {
-        userId: user.userId,
-        name: user.name,
-        email: user.email,
-        mobile: user.mobile,
-        token,
-        isVerified: user.isVerified,
-        firstTimeLogin: isFirstLogin,
-      },
-    });
   } catch (error) {
     return res.status(500).json({ message: error.message, status: false });
   }
