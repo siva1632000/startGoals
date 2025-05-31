@@ -10,11 +10,12 @@ const sequelize = new Sequelize(
     host: process.env.DB_HOST,
     dialect: process.env.DB_DIALECT,
     dialectOptions: {
-      ssl: false, // <-- Disable SSL
-      // ssl: {
-      //   require: true,
-      //   rejectUnauthorized: false,
-      // },
+      // ssl: false, // for local development, set to false
+      ssl: {
+        require: true,
+        rejectUnauthorized: false,
+      },
+      
     },
   }
 );
