@@ -64,20 +64,24 @@ const io = new Server(server, {
   },
 });
 
-initializeSocketIO(io); // Initialize Socket.IO event handlers
-app.set("io", io); // Attach io to app for use in routes/controllers
+initializeSocketIO(io);
+app.set("io", io);
 
-
-// 🔄 Auto Sync DB then start server
-// Export io after initialization but before starting server if needed elsewhere immediately
-// For now, exporting after creation is fine as controllers will import it.
-
-// autoSyncDatabase()
-//   .then(() => {
 app.listen(process.env.SERVER_PORT, () => {
   console.log("🚀 Server running on PORT " + process.env.SERVER_PORT);
 });
-// })
-// .catch((err) => {
-//   console.error("💥 Failed to start server due to DB sync error");
-// });
+
+// 🔄 Sync DB
+app.use('/sync-db', (req, res) => {
+  autoSyncDatabase()
+    .then(() => {
+      console.log("✅ Database synced successfully");
+      res.status(200).json({ message: "Database synced successfully" });
+      return;
+    })
+    .catch((err) => {
+      console.error("💥 Failed to sync database:", err);
+      res.status(500).json({ error: "Failed to sync database" });
+      return;
+    });
+});

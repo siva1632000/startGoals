@@ -29,25 +29,3 @@ const sequelize = new Sequelize(
 })();
 
 export default sequelize;
-
-// import { Sequelize } from "sequelize";
-
-// // Replace env usage with actual values
-// const sequelize = new Sequelize(
-//   "StartGoals",               // DATABASE
-//   "StartGoals",             // DB_USER
-//   "Startgoals12345",          // DB_PASSWORD
-//   {
-//     host: "mydatabase.clwec8g8o0f2.eu-north-1.rds.amazonaws.com",    // DB_HOST
-//     dialect: "postgres",  // DB_DIALECT
-//   }
-// );
-
-// (async () => {
-//   try {
-//     await sequelize.authenticate();
-//     console.log("✅ Database connection successful");
-//   } catch (error) {
-//     console.error("❌ Database connection failed:", error);
-//   }
-// })();
